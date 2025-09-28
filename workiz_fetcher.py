@@ -18,6 +18,7 @@ Requires: requests, pandas
 """
 
 import os
+import calendar
 import json
 import time
 import uuid as _uuid
@@ -55,6 +56,8 @@ PAGE_HARD_CAP = int(os.getenv("WORKIZ_PAGE_HARD_CAP", "100"))
 # Created-date segmentation to avoid caps for wide window
 EARLIEST_CREATED_YEAR = int(os.getenv("WORKIZ_EARLIEST_CREATED_YEAR", "2018"))
 SEGMENT_WIDE_BY_YEAR = os.getenv("WORKIZ_SEGMENT_WIDE_BY_YEAR", "1") not in ("0", "false", "False")
+SEGMENT_CREATED_BY_MONTH = os.getenv("WORKIZ_SEGMENT_CREATED_BY_MONTH", "1") not in ("0", "false", "False")
+SEGMENT_WIDE_BY_MONTH = os.getenv("WORKIZ_SEGMENT_WIDE_BY_MONTH", "0") not in ("0", "false", "False")
 
 # Optional: a rough expected jobs number to eyeball — purely informative.
 EXPECTED_TOTAL_JOBS = 15000  # your “looking for ~15k jobs” note
@@ -217,6 +220,7 @@ def _page_through(
     out: List[Dict[str, Any]] = []
     offset = 0
     seen = set()
+    pages = 0
     while True:
         params = base_params + [("offset", offset), ("records", PAGE_SIZE)]
         status, body, _ = _get(base_url, path, params, base_url_redacted, item_label)
@@ -228,6 +232,7 @@ def _page_through(
             break
         n = len(page)
         print(f"    [{item_label}] page @offset {offset}: {n} rows")
+        pages += 1
         if n > 0:
             sig_first = page[0].get("uuid") or page[0].get("UUID") or page[0].get("id") or str(page[0])[:40]
             sig_last = page[-1].get("uuid") or page[-1].get("UUID") or page[-1].get("id") or str(page[-1])[-40:]
@@ -238,6 +243,9 @@ def _page_through(
             seen.add(sig)
         out.extend(page)
         if n < PAGE_SIZE:
+            break
+        if pages >= PAGE_HARD_CAP:
+            print(f"⚠️ Page hard cap reached ({PAGE_HARD_CAP}); consider tighter date ranges.")
             break
         offset += PAGE_SIZE
         time.sleep(0.15)
@@ -373,23 +381,45 @@ def main():
         raw_wide: List[Dict[str, Any]] = []
 
         for st in JOB_STATUSES:
-            # 1) Created-in-year
-            rows_c = fetch_jobs_for_status(base_url, base_url_r, st, THIS_YEAR_START)
-            add_account(rows_c, name, "job")
-            for r in rows_c:
-                r["_status_pull"] = st
-            raw_created.extend(rows_c)
+            # 1) Created-in-year (optionally segmented by month)
+            if SEGMENT_CREATED_BY_MONTH:
+                for month in range(1, 13):
+                    start = f"{THIS_YEAR}-{month:02d}-01"
+                    last_day = calendar.monthrange(THIS_YEAR, month)[1]
+                    end = f"{THIS_YEAR}-{month:02d}-{last_day:02d}"
+                    rows_c = fetch_jobs_for_status_range(base_url, base_url_r, st, start, end)
+                    add_account(rows_c, name, "job")
+                    for r in rows_c:
+                        r["_status_pull"] = st
+                    raw_created.extend(rows_c)
+            else:
+                rows_c = fetch_jobs_for_status(base_url, base_url_r, st, THIS_YEAR_START)
+                add_account(rows_c, name, "job")
+                for r in rows_c:
+                    r["_status_pull"] = st
+                raw_created.extend(rows_c)
 
-            # 2) Wide window for scheduled-in-year discovery
+            # 2) Wide window for scheduled-in-year discovery (segmented by year and optional month)
             if SEGMENT_WIDE_BY_YEAR:
                 for year in range(EARLIEST_CREATED_YEAR, THIS_YEAR + 1):
-                    year_start = f"{year}-01-01"
-                    year_end = f"{year}-12-31"
-                    rows_w_seg = fetch_jobs_for_status_range(base_url, base_url_r, st, year_start, year_end)
-                    add_account(rows_w_seg, name, "job")
-                    for r in rows_w_seg:
-                        r["_status_pull"] = st
-                    raw_wide.extend(rows_w_seg)
+                    if SEGMENT_WIDE_BY_MONTH:
+                        for month in range(1, 13):
+                            start = f"{year}-{month:02d}-01"
+                            last_day = calendar.monthrange(year, month)[1]
+                            end = f"{year}-{month:02d}-{last_day:02d}"
+                            rows_w_seg = fetch_jobs_for_status_range(base_url, base_url_r, st, start, end)
+                            add_account(rows_w_seg, name, "job")
+                            for r in rows_w_seg:
+                                r["_status_pull"] = st
+                            raw_wide.extend(rows_w_seg)
+                    else:
+                        year_start = f"{year}-01-01"
+                        year_end = f"{year}-12-31"
+                        rows_w_seg = fetch_jobs_for_status_range(base_url, base_url_r, st, year_start, year_end)
+                        add_account(rows_w_seg, name, "job")
+                        for r in rows_w_seg:
+                            r["_status_pull"] = st
+                        raw_wide.extend(rows_w_seg)
             else:
                 rows_w = fetch_jobs_for_status(base_url, base_url_r, st, WIDE_START)
                 add_account(rows_w, name, "job")
