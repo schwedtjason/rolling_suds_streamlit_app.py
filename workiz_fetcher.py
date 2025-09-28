@@ -49,6 +49,13 @@ TIMEOUT_S = 45
 MAX_RETRIES = 4
 BACKOFF_BASE_S = 1.5
 
+# Page cap safeguard (if API enforces ~100 pages per query)
+PAGE_HARD_CAP = int(os.getenv("WORKIZ_PAGE_HARD_CAP", "100"))
+
+# Created-date segmentation to avoid caps for wide window
+EARLIEST_CREATED_YEAR = int(os.getenv("WORKIZ_EARLIEST_CREATED_YEAR", "2018"))
+SEGMENT_WIDE_BY_YEAR = os.getenv("WORKIZ_SEGMENT_WIDE_BY_YEAR", "1") not in ("0", "false", "False")
+
 # Optional: a rough expected jobs number to eyeball — purely informative.
 EXPECTED_TOTAL_JOBS = 15000  # your “looking for ~15k jobs” note
 
@@ -315,6 +322,27 @@ def fetch_leads(base_url: str, base_url_redacted: str) -> List[Dict[str, Any]]:
     return _page_through(base_url, "/lead/all/", params, base_url_redacted, "lead")
 
 
+def fetch_jobs_for_status_range(
+    base_url: str,
+    base_url_redacted: str,
+    status_value: str,
+    start_date: str,
+    end_date: str,
+) -> List[Dict[str, Any]]:
+    # Prefer bounded windows to avoid API page caps
+    params = [("start_date", start_date), ("only_open", "false"), ("status", status_value)]
+    if end_date:
+        params.append(("end_date", end_date))
+    print(f"🔎 Jobs status='{status_value}' (range {start_date}..{end_date})")
+    return _page_through(base_url, "/job/all/", params, base_url_redacted, "job")
+
+
+def fetch_teams(base_url: str, base_url_redacted: str) -> List[Dict[str, Any]]:
+    # Endpoint path guessed; adjust if your API differs
+    print("👥 Teams")
+    return _page_through(base_url, "/team/all/", [], base_url_redacted, "team")
+
+
 # ====================== MAIN ======================
 
 def main():
@@ -322,6 +350,7 @@ def main():
 
     all_jobs: List[Dict[str, Any]] = []
     all_leads: List[Dict[str, Any]] = []
+    all_teams: List[Dict[str, Any]] = []
     per_account_summary: List[Dict[str, Any]] = []
 
     grand_jobs_kept = 0
@@ -352,11 +381,21 @@ def main():
             raw_created.extend(rows_c)
 
             # 2) Wide window for scheduled-in-year discovery
-            rows_w = fetch_jobs_for_status(base_url, base_url_r, st, WIDE_START)
-            add_account(rows_w, name, "job")
-            for r in rows_w:
-                r["_status_pull"] = st
-            raw_wide.extend(rows_w)
+            if SEGMENT_WIDE_BY_YEAR:
+                for year in range(EARLIEST_CREATED_YEAR, THIS_YEAR + 1):
+                    year_start = f"{year}-01-01"
+                    year_end = f"{year}-12-31"
+                    rows_w_seg = fetch_jobs_for_status_range(base_url, base_url_r, st, year_start, year_end)
+                    add_account(rows_w_seg, name, "job")
+                    for r in rows_w_seg:
+                        r["_status_pull"] = st
+                    raw_wide.extend(rows_w_seg)
+            else:
+                rows_w = fetch_jobs_for_status(base_url, base_url_r, st, WIDE_START)
+                add_account(rows_w, name, "job")
+                for r in rows_w:
+                    r["_status_pull"] = st
+                raw_wide.extend(rows_w)
 
         # Deduplicate by uuid across all pulls
         dedup_map: Dict[str, Dict[str, Any]] = {}
@@ -382,20 +421,29 @@ def main():
         leads_rows = fetch_leads(base_url, base_url_r)
         add_account(leads_rows, name, "lead")
 
+        # Teams
+        try:
+            teams_rows = fetch_teams(base_url, base_url_r)
+        except Exception:
+            teams_rows = []
+        add_account(teams_rows, name, "team")
+
         # Append to global
         all_jobs.extend(kept_rows)
         all_leads.extend(leads_rows)
+        all_teams.extend(teams_rows)
 
         # Debug line (as requested): account name, endpoint, lead count, job count by status
         status_parts = " | ".join([f"{st}={status_counts.get(st,0)}" for st in JOB_STATUSES])
         print(
-            f"<-- {name} | endpoint={base_url_r} | leads={len(leads_rows)} | jobs_by_status: {status_parts} | total_jobs={len(kept_rows)}"
+            f"<-- {name} | endpoint={base_url_r} | leads={len(leads_rows)} | teams={len(teams_rows)} | jobs_by_status: {status_parts} | total_jobs={len(kept_rows)}"
         )
 
         per_account_summary.append({
             "Account": name,
             "Endpoint": base_url_r,
             "Leads": len(leads_rows),
+            "Teams": len(teams_rows),
             **{f"Jobs_{st}": status_counts.get(st, 0) for st in JOB_STATUSES},
             "Jobs_Total": len(kept_rows),
         })
@@ -407,15 +455,29 @@ def main():
 
     jobs_df = pd.DataFrame(all_jobs)
     leads_df = pd.DataFrame(all_leads)
+    teams_df = pd.DataFrame(all_teams)
     summary_df = pd.DataFrame(per_account_summary).sort_values("Account")
 
     f_jobs = os.path.join(EXPORT_ROOT, f"jobs_{run_stamp}.csv")
     f_leads = os.path.join(EXPORT_ROOT, f"leads_{run_stamp}.csv")
     f_counts = os.path.join(EXPORT_ROOT, f"counts_summary_{run_stamp}.csv")
+    f_teams = os.path.join(EXPORT_ROOT, f"teams_{run_stamp}.csv")
+    f_xlsx = os.path.join(EXPORT_ROOT, f"workiz_{run_stamp}.xlsx")
 
     jobs_df.to_csv(f_jobs, index=False)
     leads_df.to_csv(f_leads, index=False)
     summary_df.to_csv(f_counts, index=False)
+    teams_df.to_csv(f_teams, index=False)
+
+    # Excel workbook export
+    try:
+        with pd.ExcelWriter(f_xlsx, engine="openpyxl") as writer:
+            jobs_df.to_excel(writer, sheet_name="Jobs", index=False)
+            leads_df.to_excel(writer, sheet_name="Leads", index=False)
+            teams_df.to_excel(writer, sheet_name="Teams", index=False)
+            summary_df.to_excel(writer, sheet_name="Summary", index=False)
+    except Exception as e:
+        print(f"⚠️ Failed to write Excel workbook: {e}")
 
     # ====================== TOTALS ======================
 
@@ -440,7 +502,10 @@ def main():
 
     print(f"\n✅ Wrote {len(jobs_df):,} rows -> {f_jobs}")
     print(f"✅ Wrote {len(leads_df):,} rows -> {f_leads}")
+    print(f"✅ Wrote {len(teams_df):,} rows -> {f_teams}")
     print(f"✅ Wrote {len(summary_df):,} rows -> {f_counts}")
+    if os.path.exists(f_xlsx):
+        print(f"✅ Wrote Excel workbook -> {f_xlsx}")
     print("✅ Completed.")
 
 
