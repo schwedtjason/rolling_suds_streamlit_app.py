@@ -1,0 +1,16 @@
+[server]
+headless = true
+fileWatcherType = "auto"
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+fastReruns = true
+
+[global]
+dataFrameSerialization = "arrow"
+
+[client]
+toolbarMode = "minimal"
+
