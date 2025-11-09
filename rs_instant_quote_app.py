@@ -126,7 +126,9 @@ def calc_production_quote(sel: Dict) -> Dict:
     effective_rate = prod_rate / (surface_factor * story_factor)
 
     crew_size = int(sel["crew_size"])
-    crew_hours_per_day = CFG["crew"]["hours_per_day"] * crew_size
+    # Use user-selected daily hours if provided; fallback to config
+    daily_hours = float(sel.get("daily_hours") or CFG["crew"]["hours_per_day"])
+    crew_hours_per_day = max(1.0, daily_hours) * crew_size
     hours_required = area / max(1.0, effective_rate)
     days = hours_required / max(1.0, crew_hours_per_day)
 
@@ -367,20 +369,23 @@ with right:
         st.write(f"Water: ${quote.get('water', 0):,}")
     with breakdown_cols[2]:
         st.write(f"Lift: ${quote.get('lift', 0):,}")
-        if "days" in prod_quote:
-            st.write(f"Production days: {prod_quote['days']}")
+        if "day_target" in prod_quote:
             st.write(f"Day target: ${prod_quote['day_target']:,}")
 
     # Compute time to complete (sq ft per minute) and labor/fuel costs
     st.markdown("###### Time & Labor")
     exp_rate = {"Novice": 90, "Medium": 107, "Expert": 130}[exp_level]
     build_factor = {"Light": 1.0, "Medium": 0.85, "Heavy": 0.70}[buildup]
-    cleaning_rate_sqft_per_min_per_tech = exp_rate * build_factor
-    area = CFG["size_midpoints_ft2"][size]
+    suggested_per_tech = exp_rate * build_factor
     tech_count = max(1, int(crew_size))
-    cleaning_minutes = area / max(1.0, cleaning_rate_sqft_per_min_per_tech * tech_count)
+    suggested_crew_sfpm = max(10.0, min(120.0, float(suggested_per_tech * tech_count)))
+    crew_sfpm = st.slider("Crew sq ft/min", 10.0, 120.0, value=float(suggested_crew_sfpm), step=1.0)
+    area = CFG["size_midpoints_ft2"][size]
+    cleaning_minutes = area / max(1.0, float(crew_sfpm))
     cleaning_hours = cleaning_minutes / 60.0
-    days_needed = math.ceil(cleaning_hours / max(0.5, float(daily_hours)))
+    daily_hours_safe = max(0.5, float(daily_hours))
+    days_fraction = cleaning_hours / daily_hours_safe
+    days_needed = math.ceil(days_fraction)
 
     def calc_labor_cost(hours_per_day: float, days: int, rate: float, state_name: str) -> float:
         if state_name != "California":
@@ -407,9 +412,9 @@ with right:
     machine_hours = cleaning_hours * max(1, int(trucks))
     fuel_cost = machine_hours * gallons_per_hr * fuel_price
 
-    st.write(f"SqFt/min per tech: {cleaning_rate_sqft_per_min_per_tech:.1f}")
+    st.write(f"SqFt/min per crew: {crew_sfpm:.1f}")
     st.write(f"Estimated cleaning hours: {cleaning_hours:.2f}")
-    st.write(f"Estimated days to complete: {days_needed}")
+    st.write(f"Estimated days (fraction): {days_fraction:.2f}  •  Rounded: {days_needed}")
     st.write(f"Labor cost (incl. CA OT if applicable): ${labor_cost:,.2f}")
     st.write(f"Fuel cost estimate: ${fuel_cost:,.2f}")
 
