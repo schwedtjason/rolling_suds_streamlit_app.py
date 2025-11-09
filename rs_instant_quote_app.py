@@ -412,7 +412,10 @@ with right:
     machine_hours = cleaning_hours * max(1, int(trucks))
     fuel_cost = machine_hours * gallons_per_hr * fuel_price
 
-    st.write(f"SqFt/min per crew: {crew_sfpm:.1f}")
+    crew_sph = crew_sfpm * 60.0
+    tech_sph = (crew_sfpm / tech_count) * 60.0
+    st.write(f"SqFt/min per crew: {crew_sfpm:.1f}  •  SqFt/hour per crew: {crew_sph:.0f}")
+    st.write(f"SqFt/hour per tech (approx): {tech_sph:.0f}")
     st.write(f"Estimated cleaning hours: {cleaning_hours:.2f}")
     st.write(f"Estimated days (fraction): {days_fraction:.2f}  •  Rounded: {days_needed}")
     st.write(f"Labor cost (incl. CA OT if applicable): ${labor_cost:,.2f}")
