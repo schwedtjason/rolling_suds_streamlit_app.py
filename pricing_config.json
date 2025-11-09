@@ -1,0 +1,133 @@
+{
+  "min_charge": 350,
+  "frequency_discounts": {
+    "One-time": 0.0,
+    "Quarterly": -0.08,
+    "Monthly": -0.15
+  },
+  "base_rates_per_ft2": {
+    "Retail": 0.12,
+    "Office": 0.10,
+    "Warehouse": 0.07,
+    "Restaurant": 0.14,
+    "Multi-Family": 0.11
+  },
+  "surface_multiplier": {
+    "Concrete": 1.00,
+    "Brick": 1.08,
+    "Stucco": 1.10,
+    "Metal Panel": 0.95,
+    "Mixed": 1.05
+  },
+  "grime_multiplier": {
+    "Light": 1.00,
+    "Moderate": 1.20,
+    "Heavy": 1.50
+  },
+  "story_multiplier": {
+    "1": 1.00,
+    "2": 1.10,
+    "3–5": 1.25,
+    "6+": 1.45
+  },
+  "size_midpoints_ft2": {
+    "< 5,000 ft²": 4000,
+    "5–25k ft²": 15000,
+    "25–100k ft²": 60000,
+    "> 100k ft²": 150000
+  },
+  "addons_flat": {
+    "sidewalks": 250,
+    "dumpster": 175,
+    "awnings": 200,
+    "windows": 300,
+    "parking": 350
+  },
+
+  "size_discounts": {
+    "< 5,000 ft²": 0.00,
+    "5–25k ft²": -0.05,
+    "25–100k ft²": -0.10,
+    "> 100k ft²": -0.15
+  },
+
+  "travel": {
+    "included_miles": 20,
+    "per_mile_fee": 2.25
+  },
+
+  "water": {
+    "bring_water_fee": 150,
+    "on_site_water_discount_pct": -0.03
+  },
+
+  "rush_weekend": {
+    "rush_pct": 0.10,
+    "weekend_pct": 0.07
+  },
+
+  "lift": {
+    "hourly_rate": 95
+  },
+
+  "materials": {
+    "cost_per_gal": 12.0,
+    "consumption_gal_per_1000ft2": {
+      "Concrete": 0.6,
+      "Brick": 0.8,
+      "Stucco": 0.9,
+      "Metal Panel": 0.5,
+      "Mixed": 0.7
+    }
+  },
+
+  "fuel": {
+    "gallons_per_machine_hour": 0.8,
+    "price_per_gallon": 3.75
+  },
+
+  "labor": {
+    "base_hourly_rate": 22.0,
+    "burden_pct": 0.25,
+    "california_ot": {
+      "daily_threshold_1": 8,
+      "multiplier_1": 1.5,
+      "daily_threshold_2": 12,
+      "multiplier_2": 2.0
+    }
+  },
+
+  "crew": {
+    "default_size": 2,
+    "hours_per_day": 8
+  },
+
+  "job_categories": {
+    "Flatwork/Parking": {
+      "day_target": 1700,
+      "production_ft2_per_hour": {
+        "Light": 2500,
+        "Moderate": 1800,
+        "Heavy": 1200
+      }
+    },
+    "Building Wash (≤3 stories)": {
+      "day_target": 2200,
+      "production_ft2_per_hour": {
+        "Light": 1800,
+        "Moderate": 1200,
+        "Heavy": 800
+      }
+    },
+    "High-Rise (4+ stories)": {
+      "day_target_min": 3000,
+      "day_target_max": 5000,
+      "production_ft2_per_hour": {
+        "Light": 1200,
+        "Moderate": 800,
+        "Heavy": 500
+      }
+    }
+  }
+}
+
