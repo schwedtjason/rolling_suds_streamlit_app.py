@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add custom CSS for better spacing
+# Add custom CSS for Rolling Suds branding
 st.markdown("""
     <style>
     .main .block-container {
@@ -27,6 +27,11 @@ st.markdown("""
     }
     h1 {
         margin-bottom: 0.5rem;
+        color: #20B2AA;
+        font-weight: 700;
+    }
+    h2, h3 {
+        color: #20B2AA;
     }
     .stMarkdown {
         margin-bottom: 1rem;
@@ -35,7 +40,39 @@ st.markdown("""
         border: none;
         border-radius: 8px;
     }
+    .logo-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+    }
+    .logo-container img {
+        max-height: 80px;
+        width: auto;
+    }
+    .stButton>button {
+        background-color: #20B2AA;
+        color: white;
+        border-radius: 6px;
+        border: none;
+        font-weight: 600;
+    }
+    .stButton>button:hover {
+        background-color: #008B8B;
+        color: white;
+    }
+    .sidebar .sidebar-content {
+        background-color: #F5F5F5;
+    }
     </style>
+    """, unsafe_allow_html=True)
+
+# Rolling Suds Logo and Header
+logo_url = "https://www.rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png"
+st.markdown(f"""
+    <div class="logo-container">
+        <img src="{logo_url}" alt="Rolling Suds Logo" onerror="this.style.display='none'">
+    </div>
     """, unsafe_allow_html=True)
 
 st.title("📊 2026 Executive Dashboard - Financial Projections")

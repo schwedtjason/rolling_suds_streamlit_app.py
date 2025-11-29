@@ -1,9 +1,9 @@
 [theme]
-primaryColor = "#2563EB"            # Rolling Suds blue
-backgroundColor = "#0B1020"
-secondaryBackgroundColor = "#111827"
-textColor = "#E5E7EB"
+primaryColor = "#20B2AA"            # Rolling Suds teal
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#1F2937"
 font = "sans serif"
-base = "dark"
+base = "light"
 
 
