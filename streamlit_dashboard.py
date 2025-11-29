@@ -18,30 +18,40 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add custom CSS for Rolling Suds branding and symmetrical layout
+# Add custom CSS for Rolling Suds branding with sky blue background
 st.markdown("""
     <style>
+    .main {
+        background-color: #E0F2FE;
+    }
     .main .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
         max-width: 100%;
+        background-color: #E0F2FE;
+    }
+    .stApp {
+        background-color: #E0F2FE;
     }
     h1 {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
         color: #20B2AA;
         font-weight: 700;
         text-align: center;
+        font-size: 1.8rem;
     }
     h2, h3 {
         color: #20B2AA;
+        font-size: 1.2rem;
     }
     .stMarkdown {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
     }
     iframe {
         border: none;
         border-radius: 8px;
         width: 100%;
+        max-height: 1450px;
     }
     .logo-header {
         display: flex;
@@ -77,7 +87,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Rolling Suds Logo and Header - centered layout
+# Rolling Suds Logo and Header - compact centered layout
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     # Try local logo file first, then fallback to URLs, then text
@@ -94,29 +104,29 @@ with col2:
     
     logo_displayed = False
     
-    # Try local files first (PNG, SVG, JPG)
+    # Try local files first (PNG, SVG, JPG) - smaller size
     for logo_path in logo_paths:
         if os.path.exists(logo_path):
             try:
-                st.image(logo_path, width=200, use_container_width=False)
+                st.image(logo_path, width=150, use_container_width=False)
                 logo_displayed = True
                 break
             except Exception as e:
                 continue
     
-    # Also try SVG
+    # Also try SVG - smaller size
     if not logo_displayed and os.path.exists("assets/rolling_suds_logo.svg"):
         try:
-            st.image("assets/rolling_suds_logo.svg", width=200, use_container_width=False)
+            st.image("assets/rolling_suds_logo.svg", width=150, use_container_width=False)
             logo_displayed = True
         except:
             pass
     
-    # If local file not found, try URLs
+    # If local file not found, try URLs - smaller size
     if not logo_displayed:
         for logo_url in logo_urls:
             try:
-                st.image(logo_url, width=200, use_container_width=False)
+                st.image(logo_url, width=150, use_container_width=False)
                 logo_displayed = True
                 break
             except:
@@ -133,8 +143,8 @@ with col2:
 st.title("📊 2026 Executive Dashboard - Financial Projections")
 st.caption("Comprehensive financial projections and analytics for 2026")
 
-# Add spacing
-st.markdown("<br>", unsafe_allow_html=True)
+# Minimal spacing
+st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
 
 # Sidebar for configuration
 st.sidebar.header("⚙️ Configuration")
@@ -198,8 +208,8 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
             except Exception as e:
                 st.sidebar.error(f"Error: {str(e)}")
 
-# Display dashboard with symmetrical layout
-st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+# Display dashboard with compact layout
+st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
 st.header("📈 Executive Dashboard")
 
 if os.path.exists(output_path):
@@ -207,14 +217,14 @@ if os.path.exists(output_path):
     with open(output_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     
-    # Create a centered container for symmetrical display
-    col1, col2, col3 = st.columns([0.5, 11, 0.5])
+    # Create a centered container for compact display
+    col1, col2, col3 = st.columns([1, 10, 1])
     with col2:
-        # Display the dashboard with proper sizing
+        # Display the dashboard with compact sizing to fit screen
         st.components.v1.html(
             html_content, 
-            height=2000, 
-            scrolling=True,
+            height=1450, 
+            scrolling=False,
             width=None
         )
     
