@@ -18,37 +18,42 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Add custom CSS for Rolling Suds branding
+# Add custom CSS for Rolling Suds branding and symmetrical layout
 st.markdown("""
     <style>
     .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        max-width: 100%;
     }
     h1 {
         margin-bottom: 0.5rem;
         color: #20B2AA;
         font-weight: 700;
+        text-align: center;
     }
     h2, h3 {
         color: #20B2AA;
     }
     .stMarkdown {
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
     }
     iframe {
         border: none;
         border-radius: 8px;
+        width: 100%;
     }
-    .logo-container {
+    .logo-header {
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        padding: 0.5rem 0;
     }
-    .logo-container img {
-        max-height: 80px;
+    .logo-header img {
+        max-height: 60px;
         width: auto;
+        margin: 0 auto;
     }
     .stButton>button {
         background-color: #20B2AA;
@@ -56,6 +61,7 @@ st.markdown("""
         border-radius: 6px;
         border: none;
         font-weight: 600;
+        width: 100%;
     }
     .stButton>button:hover {
         background-color: #008B8B;
@@ -64,16 +70,39 @@ st.markdown("""
     .sidebar .sidebar-content {
         background-color: #F5F5F5;
     }
+    /* Hide Streamlit default elements for cleaner look */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# Rolling Suds Logo and Header
-logo_url = "https://www.rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png"
-st.markdown(f"""
-    <div class="logo-container">
-        <img src="{logo_url}" alt="Rolling Suds Logo" onerror="this.style.display='none'">
-    </div>
-    """, unsafe_allow_html=True)
+# Rolling Suds Logo and Header - centered layout
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    # Try multiple logo URLs
+    logo_urls = [
+        "https://www.rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png",
+        "https://rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png",
+        "https://www.rollingsudspowerwashing.com/wp-content/themes/rollingsuds/images/logo.png"
+    ]
+    
+    logo_displayed = False
+    for logo_url in logo_urls:
+        try:
+            st.image(logo_url, width=200, use_container_width=False)
+            logo_displayed = True
+            break
+        except:
+            continue
+    
+    if not logo_displayed:
+        # Fallback: Show text with styling
+        st.markdown("""
+            <div style="text-align: center; color: #20B2AA; font-size: 24px; font-weight: bold; margin-bottom: 1rem;">
+                🧼 Rolling Suds
+            </div>
+        """, unsafe_allow_html=True)
 
 st.title("📊 2026 Executive Dashboard - Financial Projections")
 st.caption("Comprehensive financial projections and analytics for 2026")
@@ -143,30 +172,29 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
             except Exception as e:
                 st.sidebar.error(f"Error: {str(e)}")
 
-# Display dashboard
-st.markdown("<br>", unsafe_allow_html=True)
+# Display dashboard with symmetrical layout
+st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
 st.header("📈 Executive Dashboard")
-st.markdown("<br>", unsafe_allow_html=True)
 
 if os.path.exists(output_path):
     # Read and display the HTML dashboard
     with open(output_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     
-    # Create a container with proper spacing
-    with st.container():
-        # Display the dashboard with better spacing
+    # Create a centered container for symmetrical display
+    col1, col2, col3 = st.columns([0.5, 11, 0.5])
+    with col2:
+        # Display the dashboard with proper sizing
         st.components.v1.html(
             html_content, 
             height=2000, 
-            scrolling=True
+            scrolling=True,
+            width=None
         )
     
-    # Add spacing before download button
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Download button in a centered column
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Download button - centered
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([2, 3, 2])
     with col2:
         with open(output_path, "rb") as f:
             st.download_button(
