@@ -80,27 +80,53 @@ st.markdown("""
 # Rolling Suds Logo and Header - centered layout
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    # Try multiple logo URLs
+    # Try local logo file first, then fallback to URLs, then text
+    logo_paths = [
+        "assets/rolling_suds_logo.png",
+        "rolling_suds_logo.png",
+        "assets/logo.png"
+    ]
+    
     logo_urls = [
         "https://www.rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png",
-        "https://rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png",
-        "https://www.rollingsudspowerwashing.com/wp-content/themes/rollingsuds/images/logo.png"
+        "https://rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png"
     ]
     
     logo_displayed = False
-    for logo_url in logo_urls:
-        try:
-            st.image(logo_url, width=200, use_container_width=False)
-            logo_displayed = True
-            break
-        except:
-            continue
     
+    # Try local files first (PNG, SVG, JPG)
+    for logo_path in logo_paths:
+        if os.path.exists(logo_path):
+            try:
+                st.image(logo_path, width=200, use_container_width=False)
+                logo_displayed = True
+                break
+            except Exception as e:
+                continue
+    
+    # Also try SVG
+    if not logo_displayed and os.path.exists("assets/rolling_suds_logo.svg"):
+        try:
+            st.image("assets/rolling_suds_logo.svg", width=200, use_container_width=False)
+            logo_displayed = True
+        except:
+            pass
+    
+    # If local file not found, try URLs
     if not logo_displayed:
-        # Fallback: Show text with styling
+        for logo_url in logo_urls:
+            try:
+                st.image(logo_url, width=200, use_container_width=False)
+                logo_displayed = True
+                break
+            except:
+                continue
+    
+    # Final fallback: Show styled text
+    if not logo_displayed:
         st.markdown("""
-            <div style="text-align: center; color: #20B2AA; font-size: 24px; font-weight: bold; margin-bottom: 1rem;">
-                🧼 Rolling Suds
+            <div style="text-align: center; color: #20B2AA; font-size: 28px; font-weight: bold; margin-bottom: 1rem; letter-spacing: 2px;">
+                🧼 ROLLING SUDS
             </div>
         """, unsafe_allow_html=True)
 
