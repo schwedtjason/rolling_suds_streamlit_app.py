@@ -18,8 +18,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Add custom CSS for better spacing
+st.markdown("""
+    <style>
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    h1 {
+        margin-bottom: 0.5rem;
+    }
+    .stMarkdown {
+        margin-bottom: 1rem;
+    }
+    iframe {
+        border: none;
+        border-radius: 8px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 st.title("📊 2026 Executive Dashboard - Financial Projections")
 st.caption("Comprehensive financial projections and analytics for 2026")
+
+# Add spacing
+st.markdown("<br>", unsafe_allow_html=True)
 
 # Sidebar for configuration
 st.sidebar.header("⚙️ Configuration")
@@ -84,26 +107,41 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
                 st.sidebar.error(f"Error: {str(e)}")
 
 # Display dashboard
+st.markdown("<br>", unsafe_allow_html=True)
 st.header("📈 Executive Dashboard")
+st.markdown("<br>", unsafe_allow_html=True)
 
 if os.path.exists(output_path):
     # Read and display the HTML dashboard
     with open(output_path, "r", encoding="utf-8") as f:
         html_content = f.read()
     
-    # Display the dashboard
-    st.components.v1.html(html_content, height=2000, scrolling=True)
-    
-    # Download button
-    with open(output_path, "rb") as f:
-        st.download_button(
-            label="⬇️ Download Dashboard (HTML)",
-            data=f.read(),
-            file_name="2026_executive_dashboard.html",
-            mime="text/html"
+    # Create a container with proper spacing
+    with st.container():
+        # Display the dashboard with better spacing
+        st.components.v1.html(
+            html_content, 
+            height=2000, 
+            scrolling=True
         )
+    
+    # Add spacing before download button
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Download button in a centered column
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        with open(output_path, "rb") as f:
+            st.download_button(
+                label="⬇️ Download Dashboard (HTML)",
+                data=f.read(),
+                file_name="2026_executive_dashboard.html",
+                mime="text/html",
+                use_container_width=True
+            )
 else:
     st.info("👆 Please generate the dashboard using the button in the sidebar.")
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("""
     ### Instructions:
     1. Upload your Excel workbook or use the default file
@@ -112,6 +150,7 @@ else:
     4. The dashboard will display automatically once generated
     """)
 
-# Footer
+# Footer with spacing
+st.markdown("<br>", unsafe_allow_html=True)
 st.divider()
 st.caption("💡 Tip: Use the sidebar to configure and regenerate the dashboard with different settings.")
