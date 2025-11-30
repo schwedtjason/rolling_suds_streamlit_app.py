@@ -249,9 +249,6 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
                     else:
                         st.sidebar.warning(f"⚠️ Script completed but output file not found. Check console output.")
                         st.info(f"**Output path:** {abs_output_path}\n**Script output:**\n{result.stdout[:500]}")
-                    else:
-                        st.sidebar.error(f"Script completed but output file not found at: {abs_output_path}")
-                        st.error(f"Script output:\n{result.stdout}\n\nScript errors:\n{result.stderr}")
                 else:
                     error_msg = result.stderr if result.stderr else result.stdout
                     st.sidebar.error(f"❌ Error generating dashboard")
