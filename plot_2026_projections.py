@@ -659,7 +659,7 @@ def main():
         fig = make_subplots(
             rows=5, cols=2,
             specs=[[{"type":"indicator"}, {"type":"indicator"}],
-                   [{"type":"indicator"}, {"type":"xy"}],
+                   [{"type":"indicator"}, {"type":"indicator"}],
                    [{"type":"xy"}, {"type":"pie"}],
                    [{"type":"xy"}, {"type":"xy"}],
                    [{"type":"xy"}, None]],
@@ -667,11 +667,11 @@ def main():
                 "Franchisee Collections<br><sub>Table 1: Total Pay</sub>", 
                 "Franchisor Revenue<br><sub>Table 1: Royalty + NAF + Tech</sub>", 
                 "Net Cashflow<br><sub>Table 2: After Broker Fees</sub>",
-                "Monthly Net Cashflow (Table 2)<br><sub>After Broker Fees</sub>", 
+                "Total Broker Fees<br><sub>Table 2: From New Franchise Sales</sub>", 
                 "Top 20 & Bottom 10 Locations<br><sub>Excluding New Locations</sub>", 
                 "Franchisor Revenue Breakdown<br><sub>Table 1: 3 Cashflow Buckets</sub>",
                 "Average Collections by Tier", 
-                "Monthly Franchisor Intake vs Net",
+                "Monthly Franchisor Intake vs Broker Fees vs Net",
                 "Franchisee Cash Collections<br><sub>2024, 2025, 2026 Expected</sub>",
                 ""  # Empty for last position
             ),
@@ -701,15 +701,12 @@ def main():
             title={"text": "Net Cashflow<br><sub>Table 2: After Broker Fees</sub>"}
         ), row=2, col=1)
         
-        # Row 2: Monthly Net Budget (from Table 2)
-        fig.add_trace(go.Bar(
-            x=months,
-            y=monthly_nets,
-            name="Monthly Net (Table 2)",
-            marker_color="steelblue",
-            text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_nets],
-            textposition="outside",
-            textfont=dict(size=8)
+        # Row 2: Broker Fees Indicator
+        fig.add_trace(go.Indicator(
+            mode="number",
+            value=table2_total_broker_fees,
+            number={"valueformat": ",.0f", "prefix": "$"},
+            title={"text": "Total Broker Fees<br><sub>Table 2: From New Franchise Sales</sub>"}
         ), row=2, col=2)
         
         # Row 3: Top 20 and Bottom 10 Locations Bar - show full location names
@@ -763,13 +760,22 @@ def main():
             customdata=[[int(c), float(t)] for c, t in zip(tier_stats["Location_Count"], tier_stats["Total_Collections"])]
         ), row=4, col=1)
         
-        # Row 4: Monthly Franchisor Intake vs Net (Table 2)
+        # Row 4: Monthly Franchisor Intake vs Broker Fees vs Net (Table 2)
         fig.add_trace(go.Bar(
             x=months,
             y=monthly_franchisor,
             name="Franchisor Intake",
             marker_color="darkgreen",
             text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_franchisor],
+            textposition="outside",
+            textfont=dict(size=8)
+        ), row=4, col=2)
+        fig.add_trace(go.Bar(
+            x=months,
+            y=monthly_broker,
+            name="Broker Fees",
+            marker_color="orange",
+            text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_broker],
             textposition="outside",
             textfont=dict(size=8)
         ), row=4, col=2)
@@ -783,9 +789,9 @@ def main():
             textfont=dict(size=8)
         ), row=4, col=2)
         
-        # Add total annotation to Monthly Franchisor Intake vs Net chart
+        # Add total annotations to Monthly chart
         fig.add_annotation(
-            text=f"<b>Total Net (After Broker Fees):</b><br>${table2_net_cashflow:,.0f}",
+            text=f"<b>Total Broker Fees:</b><br>${table2_total_broker_fees:,.0f}<br><b>Total Net:</b><br>${table2_net_cashflow:,.0f}",
             xref="x domain",
             yref="y domain",
             x=0.98,
