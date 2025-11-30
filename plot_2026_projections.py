@@ -446,8 +446,8 @@ def main():
             return
         
         # Table 2: Monthly Breakdown (rows 143-154 in Excel, 0-indexed = 142-153)
-        # For Franchise Sales section: Column 0: Month, Column 1: Number of Franchisees, Column 2: Number of Territories, Column 3: Total With BLP (dollar amount)
-        # For other Table 2 data: Column 6: Total Franchisor intake, Column 7: Broker Fee, Column 8: Net Total
+        # Excel column mapping: A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10
+        # Column structure: 0=Month, 2=C(Accured), 3=D(Franchise Sales num), 4=E(Territory num), 5=F(Total With BLP $), 6=G(Total Franchisor intake), 7=H(Broker Fee), 8=I(Net Total)
         monthly_data = []
         month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         try:
@@ -458,16 +458,18 @@ def main():
                 row = df_raw.iloc[row_idx]
                 month_name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else month_names[idx]
                 
-                # Franchise Sales data from Franchise Sales section
-                # Handle NaN values by converting to 0
-                num_franchisees_val = pd.to_numeric(row.iloc[1], errors="coerce")
-                num_franchisees = float(num_franchisees_val) if pd.notna(num_franchisees_val) else 0.0
+                # Franchise Sales data from Table 2 - using Excel columns D, E, F (pandas columns 3, 4, 5)
+                # Column 3 (Excel D): Franchise Sales (number of franchisees) - integer type
+                num_franchisees_val = pd.to_numeric(row.iloc[3], errors="coerce")
+                num_franchisees = int(num_franchisees_val) if pd.notna(num_franchisees_val) and not pd.isna(num_franchisees_val) else 0
                 
-                num_territories_val = pd.to_numeric(row.iloc[2], errors="coerce")
-                num_territories = float(num_territories_val) if pd.notna(num_territories_val) else 0.0
+                # Column 4 (Excel E): Territory (number of territories) - float type (can be decimal like 14.4)
+                num_territories_val = pd.to_numeric(row.iloc[4], errors="coerce")
+                num_territories = float(num_territories_val) if pd.notna(num_territories_val) and not pd.isna(num_territories_val) else 0.0
                 
-                total_with_blp_val = pd.to_numeric(row.iloc[3], errors="coerce")
-                total_with_blp = float(total_with_blp_val) if pd.notna(total_with_blp_val) else 0.0
+                # Column 5 (Excel F): Total With BLP (dollar amount/currency) - float type (currency)
+                total_with_blp_val = pd.to_numeric(row.iloc[5], errors="coerce")
+                total_with_blp = float(total_with_blp_val) if pd.notna(total_with_blp_val) and not pd.isna(total_with_blp_val) else 0.0
                 
                 # Other Table 2 data
                 total_franchisor = float(pd.to_numeric(row.iloc[6], errors="coerce") or 0)
@@ -476,9 +478,9 @@ def main():
                 
                 monthly_data.append({
                     "Month": month_names[idx],
-                    "Num_Franchisees": num_franchisees,
-                    "Num_Territories": num_territories,
-                    "Total_With_BLP": total_with_blp,  # Franchise Sales - Total With BLP
+                    "Num_Franchisees": int(num_franchisees),  # Integer: number of franchisees
+                    "Num_Territories": float(num_territories),  # Float: number of territories (can be decimal)
+                    "Total_With_BLP": float(total_with_blp),  # Currency: Total With BLP dollar amount
                     "Total_Franchisor_Intake": total_franchisor,
                     "Broker_Fee": broker_fee,
                     "Net_Total": net_total
@@ -490,6 +492,17 @@ def main():
             total_monthly = sum(m["Net_Total"] for m in monthly_data)
             if total_monthly == 0:
                 print(f"WARNING: All monthly net totals are 0. Check rows 143-154 in Excel")
+            
+            # Debug: Print Franchise Sales totals to verify
+            total_franchisees = sum(m["Num_Franchisees"] for m in monthly_data)
+            total_territories = sum(m["Num_Territories"] for m in monthly_data)
+            total_blp = sum(m["Total_With_BLP"] for m in monthly_data)
+            print(f"\n=== FRANCHISE SALES VALIDATION ===")
+            print(f"Total Franchisees: {int(total_franchisees)} (should be 52)")
+            print(f"Total Territories: {total_territories:.1f} (should be 124.8)")
+            print(f"Total With BLP: ${total_blp:,.2f} (should be $9,035,520.00)")
+            if abs(total_blp - 9035520.0) > 1000:
+                print(f"WARNING: Total With BLP doesn't match expected $9,035,520.00")
         except Exception as e:
             print(f"ERROR: Failed to read Table 2 (Monthly Breakdown) data: {e}")
             import traceback
@@ -514,6 +527,18 @@ def main():
         annualized_2025 = franchisee_collections_2024 * growth_multiplier_2025
         
         monthly_df = pd.DataFrame(monthly_data)
+        
+        # Debug: Print Franchise Sales totals to verify
+        if len(monthly_data) > 0:
+            total_franchisees = sum(m["Num_Franchisees"] for m in monthly_data)
+            total_territories = sum(m["Num_Territories"] for m in monthly_data)
+            total_blp = sum(m["Total_With_BLP"] for m in monthly_data)
+            print(f"\n=== FRANCHISE SALES VALIDATION ===")
+            print(f"Total Franchisees: {int(total_franchisees)} (should be 52)")
+            print(f"Total Territories: {total_territories:.1f} (should be 124.8)")
+            print(f"Total With BLP: ${total_blp:,.2f} (should be $9,035,520.00)")
+            if abs(total_blp - 9035520.0) > 1000:
+                print(f"WARNING: Total With BLP doesn't match expected $9,035,520.00")
         
         # Table 2 totals (from Total RNT row)
         table2_total_franchisor = float(monthly_df["Total_Franchisor_Intake"].sum())
