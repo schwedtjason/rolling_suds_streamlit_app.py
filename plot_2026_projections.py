@@ -577,12 +577,14 @@ def main():
         state_totals["Net"] = state_totals["Annual_Projected_Pay"] - state_totals["Annual_Royalty_8pct"] - state_totals["Annual_NAF_2pct"] - state_totals["Annual_Tech_Fee"]
         state_totals = state_totals.sort_values("Annual_Projected_Pay", ascending=False).head(15)
         
-        # Create comprehensive dashboard with subplots (3x3 grid)
+        # Create comprehensive dashboard with 2 graphs per row (5 rows, 2 cols) - compact layout
         fig = make_subplots(
-            rows=3, cols=3,
-            specs=[[{"type":"indicator"}, {"type":"indicator"}, {"type":"indicator"}],
-                   [{"type":"xy"}, {"type":"xy"}, {"type":"pie"}],
-                   [{"type":"xy"}, {"type":"xy"}, {"type":"xy"}]],
+            rows=5, cols=2,
+            specs=[[{"type":"indicator"}, {"type":"indicator"}],
+                   [{"type":"indicator"}, {"type":"xy"}],
+                   [{"type":"xy"}, {"type":"pie"}],
+                   [{"type":"xy"}, {"type":"xy"}],
+                   [{"type":"xy"}, None]],
             subplot_titles=(
                 "Franchisee Collections<br><sub>Table 1: Total Pay</sub>", 
                 "Franchisor Revenue<br><sub>Table 1: Royalty + NAF + Tech</sub>", 
@@ -591,11 +593,12 @@ def main():
                 "Top 20 & Bottom 10 Locations<br><sub>Excluding New Locations</sub>", 
                 "Franchisor Revenue Breakdown<br><sub>Table 1: 3 Cashflow Buckets</sub>",
                 "Average Collections by Tier", 
-                "Monthly Franchisor Intake vs Net", 
-                "Franchisee Cash Collections<br><sub>2024, 2025, 2026 Expected</sub>"
+                "Monthly Franchisor Intake vs Net",
+                "Franchisee Cash Collections<br><sub>2024, 2025, 2026 Expected</sub>",
+                ""  # Empty for last position
             ),
-            vertical_spacing=0.22,
-            horizontal_spacing=0.15
+            vertical_spacing=0.10,
+            horizontal_spacing=0.12
         )
         
         # Row 1: KPI Indicators
@@ -618,7 +621,7 @@ def main():
             value=table2_net_cashflow,
             number={"valueformat": ",.0f", "prefix": "$"},
             title={"text": "Net Cashflow<br><sub>Table 2: After Broker Fees</sub>"}
-        ), row=1, col=3)
+        ), row=2, col=1)
         
         # Row 2: Monthly Net Budget (from Table 2)
         fig.add_trace(go.Bar(
@@ -628,10 +631,10 @@ def main():
             marker_color="steelblue",
             text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_nets],
             textposition="outside",
-            textfont=dict(size=9)
-        ), row=2, col=1)
+            textfont=dict(size=8)
+        ), row=2, col=2)
         
-        # Row 2: Top 20 and Bottom 10 Locations Bar - show full location names
+        # Row 3: Top 20 and Bottom 10 Locations Bar - show full location names
         top_locs_display = top_locs.copy()
         
         # Determine colors: green for top 20, orange for bottom 10
@@ -646,20 +649,20 @@ def main():
             marker_color=colors,
             text=[f"${v:,.0f}" for v in top_locs_display["Annual_Projected_Pay"]],
             textposition="outside",
-            textfont=dict(size=9),
+            textfont=dict(size=7),
             hovertemplate="<b>%{y}</b><br>Collections: $%{x:,.0f}<extra></extra>"
-        ), row=2, col=2)
+        ), row=3, col=1)
         
-        # Row 2: Franchisor Revenue Breakdown (pie) - from Table 1
+        # Row 3: Franchisor Revenue Breakdown (pie) - from Table 1
         fig.add_trace(go.Pie(
             labels=["Royalty 8%", "NAF 2%", "Tech Fee"],
             values=[franchisor_royalty, franchisor_naf, franchisor_tech],
             hole=0.4,
             textinfo="label+percent+value",
             texttemplate="%{label}<br>$%{value:,.0f}<br>(%{percent})"
-        ), row=2, col=3)
+        ), row=3, col=2)
         
-        # Row 3: Tier Analysis with counts and totals
+        # Row 4: Tier Analysis with counts and totals
         # Create custom text labels showing count and total
         tier_text_labels = []
         tier_custom_data = []
@@ -678,12 +681,12 @@ def main():
             marker_color="coral",
             text=tier_text_labels,
             textposition="outside",
-            textfont=dict(size=9),
+            textfont=dict(size=8),
             hovertemplate="<b>Tier %{x}</b><br>Avg: $%{y:,.0f}<br>Locations: %{customdata[0]}<br>Total: $%{customdata[1]:,.0f}<extra></extra>",
             customdata=tier_custom_data
-        ), row=3, col=1)
+        ), row=4, col=1)
         
-        # Row 3: Monthly Franchisor Intake vs Net (Table 2)
+        # Row 4: Monthly Franchisor Intake vs Net (Table 2)
         fig.add_trace(go.Bar(
             x=months,
             y=monthly_franchisor,
@@ -691,8 +694,8 @@ def main():
             marker_color="darkgreen",
             text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_franchisor],
             textposition="outside",
-            textfont=dict(size=9)
-        ), row=3, col=2)
+            textfont=dict(size=8)
+        ), row=4, col=2)
         fig.add_trace(go.Bar(
             x=months,
             y=monthly_nets,
@@ -700,10 +703,10 @@ def main():
             marker_color="steelblue",
             text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_nets],
             textposition="outside",
-            textfont=dict(size=9)
-        ), row=3, col=2)
+            textfont=dict(size=8)
+        ), row=4, col=2)
         
-        # Row 3: Franchisee Cash Collections - 2024, 2025, 2026 Expected
+        # Row 5: Franchisee Cash Collections - 2024, 2025, 2026 Expected
         growth_labels = ["2024 YTD", "2025 YTD", "2026 Expected"]
         growth_values = [
             franchisee_collections_2024,
@@ -722,8 +725,8 @@ def main():
             marker_color=["blue", "green", "purple"],
             text=growth_text,
             textposition="outside",
-            textfont=dict(size=10)
-        ), row=3, col=3)
+            textfont=dict(size=8)
+        ), row=5, col=1)
         
         # Add expected growth rate as annotation (smaller, positioned to avoid overlap)
         fig.add_annotation(
@@ -740,103 +743,113 @@ def main():
             borderpad=3,
             showarrow=False,
             font=dict(size=8, family="Arial, sans-serif"),
-            row=3, col=3
+            row=5, col=1
         )
         
-        # Update layout with improved fonts and spacing
+        # Update layout with compact sizing, sky blue background, and tight spacing
         fig.update_layout(
             title_text=args.title or "2026 Executive Dashboard - Financial Projections",
-            title_font=dict(size=24, family="Arial, sans-serif"),
-            height=2000,
+            title_font=dict(size=16, family="Arial, sans-serif"),
+            height=1800,
             showlegend=True,
             barmode="group",
+            plot_bgcolor="#E0F2FE",  # Soft sky blue background
+            paper_bgcolor="#E0F2FE",  # Soft sky blue background
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.15,
+                y=-0.10,
                 xanchor="center",
                 x=0.5,
-                font=dict(size=12)
+                font=dict(size=9)
             ),
-            font=dict(size=12, family="Arial, sans-serif"),
-            margin=dict(l=100, r=100, t=100, b=150)
+            font=dict(size=9, family="Arial, sans-serif"),
+            margin=dict(l=50, r=50, t=50, b=60)
         )
         
-        # Update all subplot titles with larger fonts
+        # Update all subplot titles with compact fonts to prevent overlap
         for annotation in fig.layout.annotations:
-            annotation.font.size = 14
+            annotation.font.size = 11
             annotation.font.family = "Arial, sans-serif"
+            # Adjust y position to prevent overlap
+            if hasattr(annotation, 'y') and annotation.y > 0.95:
+                annotation.y = annotation.y - 0.02
         
-        # Update axes with better fonts and tick angles
+        # Update axes with compact fonts to prevent overlap (updated for 5x2 layout)
+        # Row 2, Col 2: Monthly Net Cashflow
         fig.update_xaxes(
             title_text="Month",
-            title_font=dict(size=13),
-            tickfont=dict(size=11),
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
             tickangle=-45,
-            row=2, col=1
-        )
-        fig.update_yaxes(
-            title_text="Net Collections ($)",
-            title_font=dict(size=13),
-            tickfont=dict(size=11),
-            row=2, col=1
-        )
-        fig.update_xaxes(
-            title_text="Collections ($)",
-            title_font=dict(size=13),
-            tickfont=dict(size=10),
             row=2, col=2
         )
         fig.update_yaxes(
+            title_text="Net Collections ($)",
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            row=2, col=2
+        )
+        # Row 3, Col 1: Top 20 & Bottom 10 Locations
+        fig.update_xaxes(
+            title_text="Collections ($)",
+            title_font=dict(size=10),
+            tickfont=dict(size=8),
+            row=3, col=1
+        )
+        fig.update_yaxes(
             title_text="Location",
-            title_font=dict(size=13),
-            tickfont=dict(size=10),
-            row=2, col=2,
+            title_font=dict(size=10),
+            tickfont=dict(size=8),
+            row=3, col=1,
             automargin=True,
             side="right"
         )
+        # Row 4, Col 1: Average Collections by Tier
         fig.update_xaxes(
             title_text="Tier",
-            title_font=dict(size=13),
-            tickfont=dict(size=12),
-            row=3, col=1
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            row=4, col=1
         )
         fig.update_yaxes(
             title_text="Avg Collections ($)",
-            title_font=dict(size=13),
-            tickfont=dict(size=11),
-            row=3, col=1
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            row=4, col=1
         )
+        # Row 4, Col 2: Monthly Franchisor Intake vs Net
         fig.update_xaxes(
             title_text="Month",
-            title_font=dict(size=13),
-            tickfont=dict(size=10),
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
             tickangle=-45,
-            row=3, col=2
+            row=4, col=2
         )
         fig.update_yaxes(
             title_text="Amount ($)",
-            title_font=dict(size=13),
-            tickfont=dict(size=11),
-            row=3, col=2
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            row=4, col=2
         )
+        # Row 5, Col 1: Franchisee Cash Collections
         fig.update_xaxes(
             title_text="Period",
-            title_font=dict(size=13),
-            tickfont=dict(size=11),
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
             tickangle=-30,
-            row=3, col=3
+            row=5, col=1
         )
         fig.update_yaxes(
             title_text="Amount ($)",
-            title_font=dict(size=13),
-            tickfont=dict(size=11),
-            row=3, col=3
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            row=5, col=1
         )
         
-        # Update remaining bar traces with consistent text formatting
+        # Update remaining bar traces with consistent compact text formatting
         fig.update_traces(
-            textfont=dict(size=9),
+            textfont=dict(size=8),
             textposition="auto",
             selector=dict(type="bar", textposition="outside")
         )

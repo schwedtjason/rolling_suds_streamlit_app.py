@@ -91,11 +91,16 @@ st.markdown("""
 # Rolling Suds Logo and Header - compact centered layout
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    # Try local logo file first, then fallback to URLs, then text
+    # Get script directory for absolute paths
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Try local logo file first with absolute paths, then fallback to URLs, then text
     logo_paths = [
-        "assets/rolling_suds_logo.png",
-        "rolling_suds_logo.png",
-        "assets/logo.png"
+        os.path.join(script_dir, "assets", "rolling_suds_logo.png"),
+        os.path.join(script_dir, "rolling_suds_logo.png"),
+        os.path.join(script_dir, "assets", "logo.png"),
+        "assets/rolling_suds_logo.png",  # Relative fallback
+        "rolling_suds_logo.png"
     ]
     
     logo_urls = [
@@ -116,12 +121,19 @@ with col2:
                 continue
     
     # Also try SVG - smaller size
-    if not logo_displayed and os.path.exists("assets/rolling_suds_logo.svg"):
-        try:
-            st.image("assets/rolling_suds_logo.svg", width=150, use_container_width=False)
-            logo_displayed = True
-        except:
-            pass
+    svg_paths = [
+        os.path.join(script_dir, "assets", "rolling_suds_logo.svg"),
+        "assets/rolling_suds_logo.svg"
+    ]
+    if not logo_displayed:
+        for svg_path in svg_paths:
+            if os.path.exists(svg_path):
+                try:
+                    st.image(svg_path, width=150, use_container_width=False)
+                    logo_displayed = True
+                    break
+                except:
+                    pass
     
     # If local file not found, try URLs - smaller size
     if not logo_displayed:
