@@ -82,6 +82,15 @@ st.markdown("""
     .sidebar .sidebar-content {
         background-color: #F5F5F5;
     }
+    /* Ensure sidebar is always visible */
+    [data-testid="stSidebar"] {
+        visibility: visible !important;
+        display: block !important;
+    }
+    /* Make sidebar toggle button visible */
+    [data-testid="stSidebarCollapseButton"] {
+        visibility: visible !important;
+    }
     /* Hide Streamlit default elements for cleaner look */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
