@@ -173,9 +173,10 @@ st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.markdown("### 🚀 Quick Start")
-    if st.button("🔄 Generate/Refresh Dashboard", type="primary", use_container_width=True):
-        # This will be handled by the sidebar button logic below
+    generate_btn_main = st.button("🔄 Generate/Refresh Dashboard", type="primary", use_container_width=True, key="main_generate")
+    if generate_btn_main:
         st.session_state['generate_dashboard'] = True
+        st.rerun()
 
 # Sidebar for configuration - make it prominent
 with st.sidebar:
