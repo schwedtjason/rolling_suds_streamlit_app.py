@@ -51,8 +51,8 @@ st.markdown("""
         border: none;
         border-radius: 8px;
         width: 100%;
-        max-height: 1600px;
-        min-height: 1600px;
+        max-height: 1850px;
+        min-height: 1850px;
     }
     .logo-header {
         display: flex;
@@ -265,7 +265,7 @@ if os.path.exists(abs_output_path):
         # Display the dashboard with proper height and scrolling to see all charts
         st.components.v1.html(
             html_content, 
-            height=1600, 
+            height=1850, 
             scrolling=True,
             width=None
         )
