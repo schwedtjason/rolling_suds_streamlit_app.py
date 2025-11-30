@@ -17,6 +17,7 @@ Usage examples:
 import os
 import sys
 import argparse
+import base64
 from typing import List, Optional
 
 import pandas as pd
@@ -449,7 +450,7 @@ def main():
         monthly_data = []
         month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         try:
-            for idx, row_idx in enumerate(range(142, 154)):  # Rows 143-154 in Excel (0-indexed: 142-153)
+            for idx, row_idx in enumerate(range(142, 154)):  # Rows 143-154 in Excel (0-indexed: 142-153) - all 12 months (Jan-Dec)
                 if row_idx >= len(df_raw):
                     print(f"WARNING: Row {row_idx} (Excel row {row_idx+1}) not found. DataFrame has {len(df_raw)} rows.")
                     break
@@ -782,6 +783,24 @@ def main():
             textfont=dict(size=8)
         ), row=4, col=2)
         
+        # Add total annotation to Monthly Franchisor Intake vs Net chart
+        fig.add_annotation(
+            text=f"<b>Total Net (After Broker Fees):</b><br>${table2_net_cashflow:,.0f}",
+            xref="x domain",
+            yref="y domain",
+            x=0.98,
+            y=0.02,
+            xanchor="right",
+            yanchor="bottom",
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="gray",
+            borderwidth=1,
+            borderpad=4,
+            showarrow=False,
+            font=dict(size=9, family="Arial, sans-serif"),
+            row=4, col=2
+        )
+        
         # Row 5: Franchisee Cash Collections - 2024, 2025, 2026 Expected
         growth_labels = ["2024 YTD", "2025 YTD", "2026 Expected"]
         growth_values = [
@@ -822,7 +841,52 @@ def main():
             row=5, col=1
         )
         
+        # Add logo at the top center
+        # Try to find logo file in common locations
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        logo_paths = [
+            os.path.join(script_dir, "assets", "rolling_suds_logo.png"),
+            os.path.join(script_dir, "rolling_suds_logo.png"),
+            os.path.join(script_dir, "external", "rolling_suds_streamlit_app.py", "assets", "rolling_suds_logo.png"),
+            "assets/rolling_suds_logo.png",
+            "rolling_suds_logo.png"
+        ]
+        logo_urls = [
+            "https://www.rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png",
+            "https://rollingsudspowerwashing.com/wp-content/uploads/2023/05/Rolling-Suds-Logo.png"
+        ]
+        
+        logo_source = None
+        for logo_path in logo_paths:
+            if os.path.exists(logo_path):
+                try:
+                    # Read image and encode as base64 for HTML embedding
+                    with open(logo_path, "rb") as img_file:
+                        img_data = base64.b64encode(img_file.read()).decode()
+                        logo_source = f"data:image/png;base64,{img_data}"
+                        break
+                except Exception:
+                    continue
+        
+        # If no local file found, try URLs
+        if not logo_source:
+            logo_source = logo_urls[0]  # Use first URL as fallback
+        
+        # Add logo image at the top center
+        if logo_source:
+            fig.add_layout_image(
+                dict(
+                    source=logo_source,
+                    xref="paper", yref="paper",
+                    x=0.5, y=1.02,  # Top center, slightly above
+                    sizex=0.15, sizey=0.15,  # Size of logo
+                    xanchor="center", yanchor="top",
+                    layer="above"
+                )
+            )
+        
         # Update layout with compact sizing, sky blue background, and tight spacing
+        # Increase top margin to accommodate logo
         fig.update_layout(
             title_text=args.title or "2026 Executive Dashboard - Financial Projections",
             title_font=dict(size=16, family="Arial, sans-serif"),
@@ -840,7 +904,7 @@ def main():
                 font=dict(size=9)
             ),
             font=dict(size=9, family="Arial, sans-serif"),
-            margin=dict(l=50, r=50, t=50, b=60)
+            margin=dict(l=50, r=50, t=120, b=60)  # Increased top margin for logo
         )
         
         # Update all subplot titles with compact fonts to prevent overlap
