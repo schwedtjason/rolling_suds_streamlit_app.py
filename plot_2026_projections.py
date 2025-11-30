@@ -529,6 +529,7 @@ def main():
         monthly_nets = monthly_df["Net_Total"].tolist()
         monthly_franchisor = monthly_df["Total_Franchisor_Intake"].tolist()
         monthly_broker = monthly_df["Broker_Fee"].tolist()
+        monthly_territory_sales = monthly_df["Total_Accrued"].tolist()  # Franchise territory sales
         
         # Top 20 and Bottom 10 locations for bar chart - exclude totals row, NaN locations, and new locations
         # This filtered dataset will also be used for tier calculation to ensure consistency
@@ -662,7 +663,7 @@ def main():
                    [{"type":"indicator"}, {"type":"indicator"}],
                    [{"type":"xy"}, {"type":"pie"}],
                    [{"type":"xy"}, {"type":"xy"}],
-                   [{"type":"xy"}, None]],
+                   [{"type":"xy"}, {"type":"xy"}]],
             subplot_titles=(
                 "Franchisee Collections<br><sub>Table 1: Total Pay</sub>", 
                 "Franchisor Revenue<br><sub>Table 1: Royalty + NAF + Tech</sub>", 
@@ -673,7 +674,7 @@ def main():
                 "Average Collections by Tier", 
                 "Monthly Franchisor Intake vs Broker Fees vs Net",
                 "Franchisee Cash Collections<br><sub>2024, 2025, 2026 Expected</sub>",
-                ""  # Empty for last position
+                "Monthly Franchise Territory Sales<br><sub>Table 2: New Franchise Sales</sub>"
             ),
             vertical_spacing=0.10,
             horizontal_spacing=0.12
@@ -847,6 +848,36 @@ def main():
             row=5, col=1
         )
         
+        # Row 5, Col 2: Monthly Franchise Territory Sales (Table 2)
+        total_territory_sales = sum(monthly_territory_sales)
+        fig.add_trace(go.Bar(
+            x=months,
+            y=monthly_territory_sales,
+            name="Territory Sales",
+            marker_color="teal",
+            text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_territory_sales],
+            textposition="outside",
+            textfont=dict(size=8)
+        ), row=5, col=2)
+        
+        # Add total annotation to Territory Sales chart
+        fig.add_annotation(
+            text=f"<b>Total Territory Sales:</b><br>${total_territory_sales:,.0f}",
+            xref="x domain",
+            yref="y domain",
+            x=0.98,
+            y=0.02,
+            xanchor="right",
+            yanchor="bottom",
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="gray",
+            borderwidth=1,
+            borderpad=4,
+            showarrow=False,
+            font=dict(size=9, family="Arial, sans-serif"),
+            row=5, col=2
+        )
+        
         # Add logo at the top center
         # Try to find logo file in common locations
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -991,6 +1022,20 @@ def main():
             title_font=dict(size=10),
             tickfont=dict(size=9),
             row=5, col=1
+        )
+        # Row 5, Col 2: Monthly Franchise Territory Sales
+        fig.update_xaxes(
+            title_text="Month",
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            tickangle=-45,
+            row=5, col=2
+        )
+        fig.update_yaxes(
+            title_text="Territory Sales ($)",
+            title_font=dict(size=10),
+            tickfont=dict(size=9),
+            row=5, col=2
         )
         
         # Update remaining bar traces with consistent compact text formatting
