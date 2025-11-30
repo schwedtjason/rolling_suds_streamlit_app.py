@@ -484,23 +484,52 @@ def main():
         new_broker = new_royalty + new_naf + new_tech
         new_net = new_expected - new_broker
         
-        # Tier analysis (Tier 1 = top performers)
+        # Tier analysis based on fixed thresholds (not equal buckets)
+        # Tier 1: >= $800K, Tier 2: $650K-$799K, Tier 3: $450K-$649K, Tier 4: < $450K
         tier_metric = args.tier_metric if args.tier_metric in df.columns else "Annual_Projected_Pay"
         df_tier = df[["Location", "Annual_Projected_Pay", "Annual_Royalty_8pct", "Annual_NAF_2pct", "Annual_Tech_Fee"]].copy()
-        df_tier = df_tier.dropna(subset=["Annual_Projected_Pay"]).sort_values("Annual_Projected_Pay", ascending=False).reset_index(drop=True)
-        n = len(df_tier)
-        tiers = max(1, int(args.tiers))
-        import math
-        bucket_size = math.ceil(n / tiers) if n > 0 else 1
-        df_tier["Tier"] = (df_tier.index // bucket_size) + 1
-        df_tier.loc[df_tier["Tier"] > tiers, "Tier"] = tiers
+        df_tier = df_tier.dropna(subset=["Annual_Projected_Pay"]).copy()
+        df_tier["Annual_Projected_Pay"] = pd.to_numeric(df_tier["Annual_Projected_Pay"], errors="coerce")
         
-        tier_avgs = df_tier.groupby("Tier", as_index=False).agg({
-            "Annual_Projected_Pay": "mean",
-            "Annual_Royalty_8pct": "mean",
-            "Annual_NAF_2pct": "mean",
-            "Annual_Tech_Fee": "mean"
+        # Assign tiers based on fixed thresholds
+        def assign_tier(value):
+            if pd.isna(value):
+                return 4
+            if value >= 800000:
+                return 1
+            elif value >= 650000:
+                return 2
+            elif value >= 450000:
+                return 3
+            else:
+                return 4
+        
+        df_tier["Tier"] = df_tier["Annual_Projected_Pay"].apply(assign_tier)
+        
+        # Calculate tier statistics: count and total collections per tier
+        tier_stats = df_tier.groupby("Tier", as_index=False).agg({
+            "Location": "count",  # Number of locations
+            "Annual_Projected_Pay": ["sum", "mean"],  # Total and average collections
+            "Annual_Royalty_8pct": "sum",
+            "Annual_NAF_2pct": "sum",
+            "Annual_Tech_Fee": "sum"
         }).sort_values("Tier")
+        
+        # Flatten column names
+        tier_stats.columns = ["Tier", "Location_Count", "Total_Collections", "Avg_Collections", "Total_Royalty", "Total_NAF", "Total_Tech"]
+        
+        # Create tier_avgs for backward compatibility with chart code
+        tier_avgs = tier_stats[["Tier", "Avg_Collections"]].copy()
+        tier_avgs.rename(columns={"Avg_Collections": "Annual_Projected_Pay"}, inplace=True)
+        
+        # Print tier summary
+        print("\n=== TIER ANALYSIS (Threshold-Based) ===")
+        for _, row in tier_stats.iterrows():
+            tier_num = int(row["Tier"])
+            count = int(row["Location_Count"])
+            total = row["Total_Collections"]
+            avg = row["Avg_Collections"]
+            print(f"Tier {tier_num}: {count} locations | Total: ${total:,.0f} | Avg: ${avg:,.0f}")
         
         # Use Table 2 monthly data (already calculated with 40% organic growth assumption)
         months = monthly_df["Month"].tolist()
@@ -630,15 +659,28 @@ def main():
             texttemplate="%{label}<br>$%{value:,.0f}<br>(%{percent})"
         ), row=2, col=3)
         
-        # Row 3: Tier Averages
+        # Row 3: Tier Analysis with counts and totals
+        # Create custom text labels showing count and total
+        tier_text_labels = []
+        tier_custom_data = []
+        for _, row in tier_stats.iterrows():
+            tier_num = int(row["Tier"])
+            count = int(row["Location_Count"])
+            total = row["Total_Collections"]
+            avg = row["Avg_Collections"]
+            tier_text_labels.append(f"${avg/1000:.0f}K<br>({count} locs)")
+            tier_custom_data.append([count, total])
+        
         fig.add_trace(go.Bar(
             x=[f"Tier {int(t)}" for t in tier_avgs["Tier"]],
             y=tier_avgs["Annual_Projected_Pay"],
             name="Avg Collections",
             marker_color="coral",
-            text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in tier_avgs["Annual_Projected_Pay"]],
+            text=tier_text_labels,
             textposition="outside",
-            textfont=dict(size=10)
+            textfont=dict(size=9),
+            hovertemplate="<b>Tier %{x}</b><br>Avg: $%{y:,.0f}<br>Locations: %{customdata[0]}<br>Total: $%{customdata[1]:,.0f}<extra></extra>",
+            customdata=tier_custom_data
         ), row=3, col=1)
         
         # Row 3: Monthly Franchisor Intake vs Net (Table 2)
