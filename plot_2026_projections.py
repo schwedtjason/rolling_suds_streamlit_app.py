@@ -411,34 +411,73 @@ def main():
         # Read raw data to get Table 1 (green totals row) and Table 2 (Monthly Breakdown)
         df_raw = pd.read_excel(xlsx_path, sheet_name=sheet_name, header=None)
         
+        # Validate data structure
+        if len(df) < 135:
+            print(f"ERROR: DataFrame has only {len(df)} rows, expected at least 135 rows for Table 1")
+            print(f"Available columns: {list(df.columns)}")
+            return
+        
+        if len(df_raw) < 154:
+            print(f"ERROR: Raw DataFrame has only {len(df_raw)} rows, expected at least 154 rows for Table 2")
+            return
+        
         # Table 1: Green totals row (row 136 in Excel, 0-indexed = 135, but we read from df which has header)
         # This row contains: Annual_Projected_Pay (franchisee collections), Annual_Royalty_8pct, Annual_NAF_2pct, Annual_Tech_Fee
         # Franchisor Revenue = Royalty + NAF + Tech (these are the 3 buckets of cashflow)
-        table1_row = df.iloc[134]  # Row 135 in the dataframe (green totals row)
-        franchisee_collections = float(pd.to_numeric(table1_row.get("Annual_Projected_Pay", 0), errors="coerce") or 0)
-        franchisor_royalty = float(pd.to_numeric(table1_row.get("Annual_Royalty_8pct", 0), errors="coerce") or 0)
-        franchisor_naf = float(pd.to_numeric(table1_row.get("Annual_NAF_2pct", 0), errors="coerce") or 0)
-        franchisor_tech = float(pd.to_numeric(table1_row.get("Annual_Tech_Fee", 0), errors="coerce") or 0)
-        franchisor_revenue = franchisor_royalty + franchisor_naf + franchisor_tech
+        try:
+            table1_row = df.iloc[134]  # Row 135 in the dataframe (green totals row)
+            franchisee_collections = float(pd.to_numeric(table1_row.get("Annual_Projected_Pay", 0), errors="coerce") or 0)
+            franchisor_royalty = float(pd.to_numeric(table1_row.get("Annual_Royalty_8pct", 0), errors="coerce") or 0)
+            franchisor_naf = float(pd.to_numeric(table1_row.get("Annual_NAF_2pct", 0), errors="coerce") or 0)
+            franchisor_tech = float(pd.to_numeric(table1_row.get("Annual_Tech_Fee", 0), errors="coerce") or 0)
+            franchisor_revenue = franchisor_royalty + franchisor_naf + franchisor_tech
+            
+            # Validate Table 1 data
+            if franchisee_collections == 0:
+                print(f"WARNING: Franchisee collections is 0. Check row 135 and column 'Annual_Projected_Pay'")
+                print(f"Row 135 data: {table1_row.to_dict()}")
+        except IndexError as e:
+            print(f"ERROR: Could not access row 135 (Table 1). DataFrame has {len(df)} rows.")
+            print(f"Error: {e}")
+            return
+        except Exception as e:
+            print(f"ERROR: Failed to read Table 1 data: {e}")
+            return
         
         # Table 2: Monthly Breakdown (rows 143-154 in Excel, 0-indexed = 142-153)
         # Column 0: Month name, Column 2: Total (Accured), Column 6: Total Franchisor intake, Column 7: Broker Fee, Column 8: Net Totaal
         monthly_data = []
         month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        for idx, row_idx in enumerate(range(142, 154)):  # Rows 143-154 in Excel (0-indexed: 142-153)
-            row = df_raw.iloc[row_idx]
-            month_name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else month_names[idx]
-            total_accrued = float(pd.to_numeric(row.iloc[2], errors="coerce") or 0)
-            total_franchisor = float(pd.to_numeric(row.iloc[6], errors="coerce") or 0)
-            broker_fee = float(pd.to_numeric(row.iloc[7], errors="coerce") or 0)
-            net_total = float(pd.to_numeric(row.iloc[8], errors="coerce") or 0)
-            monthly_data.append({
-                "Month": month_names[idx],
-                "Total_Accrued": total_accrued,
-                "Total_Franchisor_Intake": total_franchisor,
-                "Broker_Fee": broker_fee,
-                "Net_Total": net_total
-            })
+        try:
+            for idx, row_idx in enumerate(range(142, 154)):  # Rows 143-154 in Excel (0-indexed: 142-153)
+                if row_idx >= len(df_raw):
+                    print(f"WARNING: Row {row_idx} (Excel row {row_idx+1}) not found. DataFrame has {len(df_raw)} rows.")
+                    break
+                row = df_raw.iloc[row_idx]
+                month_name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else month_names[idx]
+                total_accrued = float(pd.to_numeric(row.iloc[2], errors="coerce") or 0)
+                total_franchisor = float(pd.to_numeric(row.iloc[6], errors="coerce") or 0)
+                broker_fee = float(pd.to_numeric(row.iloc[7], errors="coerce") or 0)
+                net_total = float(pd.to_numeric(row.iloc[8], errors="coerce") or 0)
+                monthly_data.append({
+                    "Month": month_names[idx],
+                    "Total_Accrued": total_accrued,
+                    "Total_Franchisor_Intake": total_franchisor,
+                    "Broker_Fee": broker_fee,
+                    "Net_Total": net_total
+                })
+            
+            # Validate Table 2 data
+            if len(monthly_data) < 12:
+                print(f"WARNING: Only {len(monthly_data)} months of data found, expected 12")
+            total_monthly = sum(m["Net_Total"] for m in monthly_data)
+            if total_monthly == 0:
+                print(f"WARNING: All monthly net totals are 0. Check rows 143-154 in Excel")
+        except Exception as e:
+            print(f"ERROR: Failed to read Table 2 (Monthly Breakdown) data: {e}")
+            import traceback
+            traceback.print_exc()
+            return
         
         # Table 3: 2025 YTD Payments for growth rate calculation (Franchisee Cash Collections)
         # Use the actual totals from user's data: 2024 = $7,019,392 (57 Zee), 2025 = $16,096,354 (82 Zee)
@@ -484,12 +523,49 @@ def main():
         new_broker = new_royalty + new_naf + new_tech
         new_net = new_expected - new_broker
         
+        # Use Table 2 monthly data (already calculated with 40% organic growth assumption)
+        months = monthly_df["Month"].tolist()
+        monthly_nets = monthly_df["Net_Total"].tolist()
+        monthly_franchisor = monthly_df["Total_Franchisor_Intake"].tolist()
+        monthly_broker = monthly_df["Broker_Fee"].tolist()
+        
+        # Top 20 and Bottom 10 locations for bar chart - exclude totals row, NaN locations, and new locations
+        # This filtered dataset will also be used for tier calculation to ensure consistency
+        df_locations = df[df["Location"].notna() & (df["Location"].astype(str).str.strip() != "")].copy()
+        df_locations["Annual_Projected_Pay"] = pd.to_numeric(df_locations["Annual_Projected_Pay"], errors="coerce")
+        df_locations = df_locations.dropna(subset=["Annual_Projected_Pay"])
+        
+        # Exclude the totals row (row 134) - it has Location='nan' and Annual_Projected_Pay=$31.9M
+        # Also exclude rows where Location is the string 'nan' (case-insensitive)
+        df_locations = df_locations[
+            ~df_locations["Location"].astype(str).str.upper().str.strip().isin(["NAN", "N/A", ""])
+        ].copy()
+        
+        # Exclude the totals row - it typically has a very high value (close to franchisee_collections total)
+        # Filter out any row where Annual_Projected_Pay is suspiciously high (likely the totals row)
+        # The totals row should be around $31.9M, so filter out anything > $10M per location
+        max_reasonable_per_location = 10000000  # $10M max per location (totals row is ~$31.9M)
+        df_locations = df_locations[df_locations["Annual_Projected_Pay"] <= max_reasonable_per_location].copy()
+        
+        # Also exclude rows where Location name contains "Total" or is suspicious
+        df_locations = df_locations[
+            ~df_locations["Location"].astype(str).str.upper().str.contains("TOTAL", na=False)
+        ].copy()
+        
+        # Additional safety: exclude row 134 explicitly if it's still in the dataset
+        if 134 in df_locations.index:
+            df_locations = df_locations.drop(134)
+        
+        # Exclude new locations if specified
+        if args.new_locations:
+            new_location_list = [s.strip() for s in args.new_locations.split(",") if s.strip()]
+            df_locations = df_locations[~df_locations["Location"].astype(str).isin(new_location_list)]
+        
         # Tier analysis based on fixed thresholds (not equal buckets)
         # Tier 1: >= $800K, Tier 2: $650K-$799K, Tier 3: $450K-$649K, Tier 4: < $450K
-        tier_metric = args.tier_metric if args.tier_metric in df.columns else "Annual_Projected_Pay"
-        df_tier = df[["Location", "Annual_Projected_Pay", "Annual_Royalty_8pct", "Annual_NAF_2pct", "Annual_Tech_Fee"]].copy()
-        df_tier = df_tier.dropna(subset=["Annual_Projected_Pay"]).copy()
-        df_tier["Annual_Projected_Pay"] = pd.to_numeric(df_tier["Annual_Projected_Pay"], errors="coerce")
+        # IMPORTANT: Use the same filtered dataset (df_locations) to ensure consistency and correct totals
+        tier_metric = args.tier_metric if args.tier_metric in df_locations.columns else "Annual_Projected_Pay"
+        df_tier = df_locations[["Location", "Annual_Projected_Pay", "Annual_Royalty_8pct", "Annual_NAF_2pct", "Annual_Tech_Fee"]].copy()
         
         # Assign tiers based on fixed thresholds
         def assign_tier(value):
@@ -506,6 +582,10 @@ def main():
         
         df_tier["Tier"] = df_tier["Annual_Projected_Pay"].apply(assign_tier)
         
+        # CRITICAL: Remove duplicates - if same location appears multiple times, keep the first (or highest value)
+        # This ensures we don't double-count locations
+        df_tier = df_tier.sort_values("Annual_Projected_Pay", ascending=False).drop_duplicates(subset=["Location"], keep="first")
+        
         # Calculate tier statistics: count and total collections per tier
         tier_stats = df_tier.groupby("Tier", as_index=False).agg({
             "Location": "count",  # Number of locations
@@ -517,6 +597,19 @@ def main():
         
         # Flatten column names
         tier_stats.columns = ["Tier", "Location_Count", "Total_Collections", "Avg_Collections", "Total_Royalty", "Total_NAF", "Total_Tech"]
+        
+        # Validate tier totals match franchisee_collections (should be close to $31.7M)
+        tier_total_sum = tier_stats["Total_Collections"].sum()
+        print(f"\n=== TIER VALIDATION ===")
+        print(f"Tier Total Sum: ${tier_total_sum:,.2f}")
+        print(f"Franchisee Collections (Table 1): ${franchisee_collections:,.2f}")
+        print(f"2026 Expected Collections: ${franchisee_collections_2026:,.2f}")
+        print(f"Difference from Table 1: ${abs(tier_total_sum - franchisee_collections):,.2f}")
+        print(f"Difference from 2026 Expected: ${abs(tier_total_sum - franchisee_collections_2026):,.2f}")
+        if abs(tier_total_sum - franchisee_collections_2026) > 100000:  # More than $100K difference
+            print(f"WARNING: Tier totals don't match 2026 expected collections! Check filtering logic.")
+            print(f"Number of unique locations in df_tier: {df_tier['Location'].nunique()}")
+            print(f"Total rows in df_tier: {len(df_tier)}")
         
         # Create tier_avgs for backward compatibility with chart code
         tier_avgs = tier_stats[["Tier", "Avg_Collections"]].copy()
@@ -530,22 +623,6 @@ def main():
             total = row["Total_Collections"]
             avg = row["Avg_Collections"]
             print(f"Tier {tier_num}: {count} locations | Total: ${total:,.0f} | Avg: ${avg:,.0f}")
-        
-        # Use Table 2 monthly data (already calculated with 40% organic growth assumption)
-        months = monthly_df["Month"].tolist()
-        monthly_nets = monthly_df["Net_Total"].tolist()
-        monthly_franchisor = monthly_df["Total_Franchisor_Intake"].tolist()
-        monthly_broker = monthly_df["Broker_Fee"].tolist()
-        
-        # Top 20 and Bottom 10 locations for bar chart - exclude totals row, NaN locations, and new locations
-        df_locations = df[df["Location"].notna() & (df["Location"].astype(str).str.strip() != "")].copy()
-        df_locations["Annual_Projected_Pay"] = pd.to_numeric(df_locations["Annual_Projected_Pay"], errors="coerce")
-        df_locations = df_locations.dropna(subset=["Annual_Projected_Pay"])
-        
-        # Exclude new locations if specified
-        if args.new_locations:
-            new_location_list = [s.strip() for s in args.new_locations.split(",") if s.strip()]
-            df_locations = df_locations[~df_locations["Location"].astype(str).isin(new_location_list)]
         
         # Get top 20 and bottom 10 (excluding new locations)
         top_20 = df_locations.nlargest(20, "Annual_Projected_Pay")[["Location", "Annual_Projected_Pay"]].copy()
@@ -664,26 +741,25 @@ def main():
         
         # Row 4: Tier Analysis with counts and totals
         # Create custom text labels showing count and total
-        tier_text_labels = []
-        tier_custom_data = []
+        tier_labels = []
         for _, row in tier_stats.iterrows():
             tier_num = int(row["Tier"])
             count = int(row["Location_Count"])
             total = row["Total_Collections"]
             avg = row["Avg_Collections"]
-            tier_text_labels.append(f"${avg/1000:.0f}K<br>({count} locs)")
-            tier_custom_data.append([count, total])
+            tier_labels.append(f"Tier {tier_num}<br><sub>{count} locations<br>Total: ${total/1000:.0f}K</sub>")
         
         fig.add_trace(go.Bar(
             x=[f"Tier {int(t)}" for t in tier_avgs["Tier"]],
             y=tier_avgs["Annual_Projected_Pay"],
             name="Avg Collections",
             marker_color="coral",
-            text=tier_text_labels,
+            text=[f"${v/1000:.0f}K<br>({int(tier_stats.loc[tier_stats['Tier']==t, 'Location_Count'].values[0])} locs)" 
+                  for t, v in zip(tier_avgs["Tier"], tier_avgs["Annual_Projected_Pay"])],
             textposition="outside",
             textfont=dict(size=8),
             hovertemplate="<b>Tier %{x}</b><br>Avg: $%{y:,.0f}<br>Locations: %{customdata[0]}<br>Total: $%{customdata[1]:,.0f}<extra></extra>",
-            customdata=tier_custom_data
+            customdata=[[int(c), float(t)] for c, t in zip(tier_stats["Location_Count"], tier_stats["Total_Collections"])]
         ), row=4, col=1)
         
         # Row 4: Monthly Franchisor Intake vs Net (Table 2)
