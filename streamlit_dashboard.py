@@ -179,6 +179,13 @@ tiers = st.sidebar.slider("Number of Tiers", 2, 6, 4, 1)
 
 output_path = "outputs/plots/2026_executive_dashboard.html"
 
+# Ensure output directory exists
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+# Get the script directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+plot_script_path = os.path.join(script_dir, "plot_2026_projections.py")
+
 # Generate dashboard button
 if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
     if not os.path.exists(xlsx_path):
@@ -189,7 +196,7 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
                 # Run the dashboard generation script
                 cmd = [
                     sys.executable,
-                    "plot_2026_projections.py",
+                    plot_script_path,
                     "--file", xlsx_path,
                     "--sheet", SHEET_NAME,
                     "--executive-dashboard",
@@ -198,15 +205,21 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
                     "--output", output_path,
                     "--title", "2026 Executive Dashboard - Financial Projections"
                 ]
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=script_dir)
                 
                 if result.returncode == 0:
                     st.sidebar.success("✅ Dashboard generated successfully!")
+                    if result.stdout:
+                        st.sidebar.text(result.stdout[:500])  # Show first 500 chars of output
                     st.rerun()
                 else:
-                    st.sidebar.error(f"Error generating dashboard:\n{result.stderr}")
+                    error_msg = result.stderr if result.stderr else result.stdout
+                    st.sidebar.error(f"Error generating dashboard:\n{error_msg[:1000]}")
+                    st.error(f"Full error details:\n{error_msg}")
             except Exception as e:
+                import traceback
                 st.sidebar.error(f"Error: {str(e)}")
+                st.error(f"Exception details:\n{traceback.format_exc()}")
 
 # Display dashboard with compact layout
 st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
