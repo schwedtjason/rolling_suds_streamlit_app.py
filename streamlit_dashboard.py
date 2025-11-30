@@ -239,9 +239,14 @@ plot_script_path = os.path.join(script_dir, "plot_2026_projections.py")
 with st.sidebar:
     st.markdown("---")
     st.markdown("### 🚀 Generate Dashboard")
-    generate_btn = st.button("🔄 Generate/Refresh Dashboard", type="primary", use_container_width=True)
+    generate_btn_sidebar = st.button("🔄 Generate/Refresh Dashboard", type="primary", use_container_width=True, key="sidebar_generate")
     
+# Check if either button was clicked
+generate_btn = generate_btn_sidebar or st.session_state.get('generate_dashboard', False)
 if generate_btn:
+    # Clear the session state flag
+    if 'generate_dashboard' in st.session_state:
+        del st.session_state['generate_dashboard']
     if not os.path.exists(xlsx_path):
         st.error(f"Excel file not found: {xlsx_path}")
     else:
