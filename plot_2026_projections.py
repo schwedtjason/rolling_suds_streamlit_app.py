@@ -893,69 +893,33 @@ def main():
             row=5, col=1
         )
         
-        # Row 5, Col 2: Monthly Franchise Sales (Table 2) - Show dollar amount, franchisees, and territories
+        # Row 5, Col 2: Monthly Franchise Territory Sales (Table 2) - Standard bar chart style
         total_territory_sales = sum(monthly_territory_sales)
         total_franchisees = sum(monthly_num_franchisees)
+        total_territories = sum(monthly_num_territories)
         
-        # Primary: Dollar amounts as bars
+        # Standard color bar chart (same style as Monthly Franchisor Intake)
         fig.add_trace(go.Bar(
             x=months,
             y=monthly_territory_sales,
-            name="Total Sales ($)",
+            name="Territory Sales",
             marker_color="teal",
             text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_territory_sales],
             textposition="outside",
             textfont=dict(size=8)
         ), row=5, col=2)
         
-        # Scale counts to be visible on the same chart (multiply by a factor to position them on the bars)
-        # We'll position them at the top of each bar with text labels
-        max_sales = max(monthly_territory_sales) if monthly_territory_sales else 1
-        scaled_franchisees = [v * (max_sales * 0.15) for v in monthly_num_franchisees]  # Scale to ~15% of max
-        scaled_territories = [v * (max_sales * 0.10) for v in monthly_num_territories]  # Scale to ~10% of max
-        
-        # Add scatter overlay for franchisees count (positioned at top of bars)
-        # Handle NaN values by converting to 0
-        franchisee_y_positions = [sales + scaled_franchisees[i] for i, sales in enumerate(monthly_territory_sales)]
-        franchisee_text = [f"{int(v)}" if pd.notna(v) and v > 0 else "" for v in monthly_num_franchisees]
-        fig.add_trace(go.Scatter(
-            x=months,
-            y=franchisee_y_positions,
-            name="Franchisees",
-            mode="markers+text",
-            marker=dict(size=12, color="orange", symbol="circle", line=dict(width=2, color="darkorange")),
-            text=franchisee_text,
-            textposition="top center",
-            textfont=dict(size=9, color="darkorange", family="Arial, sans-serif", weight="bold"),
-            showlegend=True
-        ), row=5, col=2)
-        
-        # Add scatter overlay for territories count (positioned above franchisees)
-        territory_y_positions = [franchisee_y_positions[i] + scaled_territories[i] for i in range(len(months))]
-        territory_text = [f"{v:.1f}" if pd.notna(v) and v > 0 else "" for v in monthly_num_territories]
-        fig.add_trace(go.Scatter(
-            x=months,
-            y=territory_y_positions,
-            name="Territories",
-            mode="markers+text",
-            marker=dict(size=12, color="purple", symbol="diamond", line=dict(width=2, color="darkviolet")),
-            text=territory_text,
-            textposition="top center",
-            textfont=dict(size=9, color="darkviolet", family="Arial, sans-serif", weight="bold"),
-            showlegend=True
-        ), row=5, col=2)
-        
-        # Add total annotation with all totals (handle NaN values)
+        # Add total annotation - moved to top left to avoid overlap
         total_franchisees_display = int(total_franchisees) if pd.notna(total_franchisees) and total_franchisees > 0 else 0
         total_territories_display = total_territories if pd.notna(total_territories) and total_territories > 0 else 0.0
         fig.add_annotation(
             text=f"<b>Annual Totals:</b><br>Sales: ${total_territory_sales:,.0f}<br>Franchisees: {total_franchisees_display}<br>Territories: {total_territories_display:.1f}",
             xref="x domain",
             yref="y domain",
-            x=0.98,
-            y=0.02,
-            xanchor="right",
-            yanchor="bottom",
+            x=0.02,
+            y=0.98,
+            xanchor="left",
+            yanchor="top",
             bgcolor="rgba(255,255,255,0.9)",
             bordercolor="gray",
             borderwidth=1,
