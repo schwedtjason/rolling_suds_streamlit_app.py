@@ -10,12 +10,13 @@ import os
 import subprocess
 import sys
 
-# Page config
+# Page config - ensure sidebar is always visible
 st.set_page_config(
     page_title="2026 Executive Dashboard",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items=None  # Remove default menu to ensure sidebar is visible
 )
 
 # Add custom CSS for Rolling Suds branding with sky blue background
@@ -159,45 +160,52 @@ st.caption("Comprehensive financial projections and analytics for 2026")
 # Minimal spacing
 st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
 
-# Sidebar for configuration
-st.sidebar.header("⚙️ Configuration")
+# Sidebar for configuration - make it prominent
+with st.sidebar:
+    st.markdown("## ⚙️ Configuration")
+    st.markdown("---")
 
 # File selection
 DEFAULT_FILE = "2026 Projections (working Doc ) (version 1) (version 1).xlsx"
 SHEET_NAME = "2026_Locations"
 
-uploaded_file = st.sidebar.file_uploader(
-    "Upload Excel Workbook",
-    type=["xlsx", "xls"],
-    help="Upload the 2026 Projections workbook"
-)
+with st.sidebar:
+    uploaded_file = st.file_uploader(
+        "📁 Upload Excel Workbook",
+        type=["xlsx", "xls"],
+        help="Upload the 2026 Projections workbook"
+    )
 
-if uploaded_file is not None:
-    # Save uploaded file with absolute path
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    xlsx_path = os.path.join(script_dir, f"temp_{uploaded_file.name}")
-    with open(xlsx_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    st.sidebar.success(f"File uploaded: {uploaded_file.name}")
-else:
-    # Use absolute path for default file
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    default_path = os.path.join(script_dir, DEFAULT_FILE)
-    if os.path.exists(default_path):
-        xlsx_path = default_path
-        st.sidebar.info(f"Using default file: {DEFAULT_FILE}")
+with st.sidebar:
+    if uploaded_file is not None:
+        # Save uploaded file with absolute path
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        xlsx_path = os.path.join(script_dir, f"temp_{uploaded_file.name}")
+        with open(xlsx_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success(f"✅ File uploaded: {uploaded_file.name}")
     else:
-        xlsx_path = DEFAULT_FILE  # Fallback to relative
-        if os.path.exists(xlsx_path):
-            xlsx_path = os.path.abspath(xlsx_path)
-            st.sidebar.info(f"Using default file (relative path): {DEFAULT_FILE}")
+        # Use absolute path for default file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        default_path = os.path.join(script_dir, DEFAULT_FILE)
+        if os.path.exists(default_path):
+            xlsx_path = default_path
+            st.info(f"📄 Using default file: {DEFAULT_FILE}")
         else:
-            st.sidebar.warning(f"Default file not found. Please upload a file.")
+            xlsx_path = DEFAULT_FILE  # Fallback to relative
+            if os.path.exists(xlsx_path):
+                xlsx_path = os.path.abspath(xlsx_path)
+                st.info(f"📄 Using default file (relative path): {DEFAULT_FILE}")
+            else:
+                st.warning(f"⚠️ Default file not found. Please upload a file.")
 
 # Dashboard options
-st.sidebar.header("📊 Dashboard Options")
-top_n = st.sidebar.slider("Top N Locations", 10, 50, 20, 5)
-tiers = st.sidebar.slider("Number of Tiers", 2, 6, 4, 1)
+with st.sidebar:
+    st.markdown("## 📊 Dashboard Options")
+    st.markdown("---")
+    top_n = st.slider("Top N Locations", 10, 50, 20, 5)
+    tiers = st.slider("Number of Tiers", 2, 6, 4, 1)
+    st.markdown("---")
 
 output_path = "outputs/plots/2026_executive_dashboard.html"
 
@@ -209,8 +217,13 @@ if 'script_dir' not in locals():
     script_dir = os.path.dirname(os.path.abspath(__file__))
 plot_script_path = os.path.join(script_dir, "plot_2026_projections.py")
 
-# Generate dashboard button
-if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
+# Generate dashboard button - make it very prominent
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### 🚀 Generate Dashboard")
+    generate_btn = st.button("🔄 Generate/Refresh Dashboard", type="primary", use_container_width=True)
+    
+if generate_btn:
     if not os.path.exists(xlsx_path):
         st.error(f"Excel file not found: {xlsx_path}")
     else:
@@ -237,25 +250,29 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
                 if result.returncode == 0:
                     # Check if output file was created
                     if os.path.exists(abs_output_path):
-                        st.sidebar.success("✅ Dashboard generated successfully!")
-                        if result.stdout:
-                            # Show summary from stdout
-                            stdout_lines = result.stdout.split('\n')
-                            summary = [line for line in stdout_lines if 'TABLE' in line or 'Franchisee' in line or 'Franchisor' in line or 'Growth' in line or 'TIER' in line or 'Tier' in line]
-                            if summary:
-                                with st.sidebar.expander("📊 Dashboard Summary", expanded=False):
-                                    st.text('\n'.join(summary[:15]))
+                        with st.sidebar:
+                            st.success("✅ Dashboard generated successfully!")
+                            if result.stdout:
+                                # Show summary from stdout
+                                stdout_lines = result.stdout.split('\n')
+                                summary = [line for line in stdout_lines if 'TABLE' in line or 'Franchisee' in line or 'Franchisor' in line or 'Growth' in line or 'TIER' in line or 'Tier' in line]
+                                if summary:
+                                    with st.expander("📊 Dashboard Summary", expanded=False):
+                                        st.text('\n'.join(summary[:15]))
                         st.rerun()
                     else:
-                        st.sidebar.warning(f"⚠️ Script completed but output file not found. Check console output.")
+                        with st.sidebar:
+                            st.warning(f"⚠️ Script completed but output file not found.")
                         st.info(f"**Output path:** {abs_output_path}\n**Script output:**\n{result.stdout[:500]}")
                 else:
                     error_msg = result.stderr if result.stderr else result.stdout
-                    st.sidebar.error(f"❌ Error generating dashboard")
+                    with st.sidebar:
+                        st.error(f"❌ Error generating dashboard")
                     st.error(f"**Error Details:**\n\n{error_msg[:2000]}\n\n**Command:**\n{' '.join(cmd)}")
             except Exception as e:
                 import traceback
-                st.sidebar.error(f"Error: {str(e)}")
+                with st.sidebar:
+                    st.error(f"Error: {str(e)}")
                 st.error(f"Exception details:\n{traceback.format_exc()}")
 
 # Display dashboard with compact layout
