@@ -241,10 +241,14 @@ if st.sidebar.button("🔄 Generate/Refresh Dashboard", type="primary"):
                         if result.stdout:
                             # Show summary from stdout
                             stdout_lines = result.stdout.split('\n')
-                            summary = [line for line in stdout_lines if 'TABLE' in line or 'Franchisee' in line or 'Franchisor' in line or 'Growth' in line]
+                            summary = [line for line in stdout_lines if 'TABLE' in line or 'Franchisee' in line or 'Franchisor' in line or 'Growth' in line or 'TIER' in line or 'Tier' in line]
                             if summary:
-                                st.sidebar.text('\n'.join(summary[:10]))
+                                with st.sidebar.expander("📊 Dashboard Summary", expanded=False):
+                                    st.text('\n'.join(summary[:15]))
                         st.rerun()
+                    else:
+                        st.sidebar.warning(f"⚠️ Script completed but output file not found. Check console output.")
+                        st.info(f"**Output path:** {abs_output_path}\n**Script output:**\n{result.stdout[:500]}")
                     else:
                         st.sidebar.error(f"Script completed but output file not found at: {abs_output_path}")
                         st.error(f"Script output:\n{result.stdout}\n\nScript errors:\n{result.stderr}")
