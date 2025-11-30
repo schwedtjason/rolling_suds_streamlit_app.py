@@ -459,9 +459,15 @@ def main():
                 month_name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else month_names[idx]
                 
                 # Franchise Sales data from Franchise Sales section
-                num_franchisees = float(pd.to_numeric(row.iloc[1], errors="coerce") or 0)  # Number of franchisees
-                num_territories = float(pd.to_numeric(row.iloc[2], errors="coerce") or 0)  # Number of territories
-                total_with_blp = float(pd.to_numeric(row.iloc[3], errors="coerce") or 0)  # Total With BLP (dollar amount)
+                # Handle NaN values by converting to 0
+                num_franchisees_val = pd.to_numeric(row.iloc[1], errors="coerce")
+                num_franchisees = float(num_franchisees_val) if pd.notna(num_franchisees_val) else 0.0
+                
+                num_territories_val = pd.to_numeric(row.iloc[2], errors="coerce")
+                num_territories = float(num_territories_val) if pd.notna(num_territories_val) else 0.0
+                
+                total_with_blp_val = pd.to_numeric(row.iloc[3], errors="coerce")
+                total_with_blp = float(total_with_blp_val) if pd.notna(total_with_blp_val) else 0.0
                 
                 # Other Table 2 data
                 total_franchisor = float(pd.to_numeric(row.iloc[6], errors="coerce") or 0)
@@ -539,11 +545,11 @@ def main():
         monthly_nets = monthly_df["Net_Total"].tolist()
         monthly_franchisor = monthly_df["Total_Franchisor_Intake"].tolist()
         monthly_broker = monthly_df["Broker_Fee"].tolist()
-        # Franchise Sales data
-        monthly_num_franchisees = monthly_df["Num_Franchisees"].tolist()  # Number of franchisees per month
-        monthly_num_territories = monthly_df["Num_Territories"].tolist()  # Number of territories per month
-        monthly_territory_sales = monthly_df["Total_With_BLP"].tolist()  # Total With BLP (dollar amount)
-        total_territories = sum(monthly_num_territories)  # Total territories for the year
+        # Franchise Sales data - fill NaN values with 0
+        monthly_num_franchisees = monthly_df["Num_Franchisees"].fillna(0).tolist()  # Number of franchisees per month
+        monthly_num_territories = monthly_df["Num_Territories"].fillna(0).tolist()  # Number of territories per month
+        monthly_territory_sales = monthly_df["Total_With_BLP"].fillna(0).tolist()  # Total With BLP (dollar amount)
+        total_territories = sum([v if pd.notna(v) else 0 for v in monthly_num_territories])  # Total territories for the year
         
         # Top 20 and Bottom 10 locations for bar chart - exclude totals row, NaN locations, and new locations
         # This filtered dataset will also be used for tier calculation to ensure consistency
@@ -884,14 +890,16 @@ def main():
         scaled_territories = [v * (max_sales * 0.10) for v in monthly_num_territories]  # Scale to ~10% of max
         
         # Add scatter overlay for franchisees count (positioned at top of bars)
+        # Handle NaN values by converting to 0
         franchisee_y_positions = [sales + scaled_franchisees[i] for i, sales in enumerate(monthly_territory_sales)]
+        franchisee_text = [f"{int(v)}" if pd.notna(v) and v > 0 else "" for v in monthly_num_franchisees]
         fig.add_trace(go.Scatter(
             x=months,
             y=franchisee_y_positions,
             name="Franchisees",
             mode="markers+text",
             marker=dict(size=12, color="orange", symbol="circle", line=dict(width=2, color="darkorange")),
-            text=[f"{int(v)}" for v in monthly_num_franchisees],
+            text=franchisee_text,
             textposition="top center",
             textfont=dict(size=9, color="darkorange", family="Arial, sans-serif", weight="bold"),
             showlegend=True
@@ -899,21 +907,24 @@ def main():
         
         # Add scatter overlay for territories count (positioned above franchisees)
         territory_y_positions = [franchisee_y_positions[i] + scaled_territories[i] for i in range(len(months))]
+        territory_text = [f"{v:.1f}" if pd.notna(v) and v > 0 else "" for v in monthly_num_territories]
         fig.add_trace(go.Scatter(
             x=months,
             y=territory_y_positions,
             name="Territories",
             mode="markers+text",
             marker=dict(size=12, color="purple", symbol="diamond", line=dict(width=2, color="darkviolet")),
-            text=[f"{v:.1f}" for v in monthly_num_territories],
+            text=territory_text,
             textposition="top center",
             textfont=dict(size=9, color="darkviolet", family="Arial, sans-serif", weight="bold"),
             showlegend=True
         ), row=5, col=2)
         
-        # Add total annotation with all totals
+        # Add total annotation with all totals (handle NaN values)
+        total_franchisees_display = int(total_franchisees) if pd.notna(total_franchisees) and total_franchisees > 0 else 0
+        total_territories_display = total_territories if pd.notna(total_territories) and total_territories > 0 else 0.0
         fig.add_annotation(
-            text=f"<b>Annual Totals:</b><br>Sales: ${total_territory_sales:,.0f}<br>Franchisees: {int(total_franchisees)}<br>Territories: {total_territories:.1f}",
+            text=f"<b>Annual Totals:</b><br>Sales: ${total_territory_sales:,.0f}<br>Franchisees: {total_franchisees_display}<br>Territories: {total_territories_display:.1f}",
             xref="x domain",
             yref="y domain",
             x=0.98,
