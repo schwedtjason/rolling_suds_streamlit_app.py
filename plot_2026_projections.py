@@ -446,7 +446,8 @@ def main():
             return
         
         # Table 2: Monthly Breakdown (rows 143-154 in Excel, 0-indexed = 142-153)
-        # Column 0: Month name, Column 2: Total (Accured), Column 6: Total Franchisor intake, Column 7: Broker Fee, Column 8: Net Totaal
+        # For Franchise Sales section: Column 0: Month, Column 1: Number of Franchisees, Column 2: Number of Territories, Column 3: Total With BLP (dollar amount)
+        # For other Table 2 data: Column 6: Total Franchisor intake, Column 7: Broker Fee, Column 8: Net Total
         monthly_data = []
         month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         try:
@@ -456,13 +457,22 @@ def main():
                     break
                 row = df_raw.iloc[row_idx]
                 month_name = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else month_names[idx]
-                total_accrued = float(pd.to_numeric(row.iloc[2], errors="coerce") or 0)
+                
+                # Franchise Sales data from Franchise Sales section
+                num_franchisees = float(pd.to_numeric(row.iloc[1], errors="coerce") or 0)  # Number of franchisees
+                num_territories = float(pd.to_numeric(row.iloc[2], errors="coerce") or 0)  # Number of territories
+                total_with_blp = float(pd.to_numeric(row.iloc[3], errors="coerce") or 0)  # Total With BLP (dollar amount)
+                
+                # Other Table 2 data
                 total_franchisor = float(pd.to_numeric(row.iloc[6], errors="coerce") or 0)
                 broker_fee = float(pd.to_numeric(row.iloc[7], errors="coerce") or 0)
                 net_total = float(pd.to_numeric(row.iloc[8], errors="coerce") or 0)
+                
                 monthly_data.append({
                     "Month": month_names[idx],
-                    "Total_Accrued": total_accrued,
+                    "Num_Franchisees": num_franchisees,
+                    "Num_Territories": num_territories,
+                    "Total_With_BLP": total_with_blp,  # Franchise Sales - Total With BLP
                     "Total_Franchisor_Intake": total_franchisor,
                     "Broker_Fee": broker_fee,
                     "Net_Total": net_total
@@ -529,7 +539,11 @@ def main():
         monthly_nets = monthly_df["Net_Total"].tolist()
         monthly_franchisor = monthly_df["Total_Franchisor_Intake"].tolist()
         monthly_broker = monthly_df["Broker_Fee"].tolist()
-        monthly_territory_sales = monthly_df["Total_Accrued"].tolist()  # Franchise territory sales
+        # Franchise Sales data
+        monthly_num_franchisees = monthly_df["Num_Franchisees"].tolist()  # Number of franchisees per month
+        monthly_num_territories = monthly_df["Num_Territories"].tolist()  # Number of territories per month
+        monthly_territory_sales = monthly_df["Total_With_BLP"].tolist()  # Total With BLP (dollar amount)
+        total_territories = sum(monthly_num_territories)  # Total territories for the year
         
         # Top 20 and Bottom 10 locations for bar chart - exclude totals row, NaN locations, and new locations
         # This filtered dataset will also be used for tier calculation to ensure consistency
@@ -848,21 +862,58 @@ def main():
             row=5, col=1
         )
         
-        # Row 5, Col 2: Monthly Franchise Territory Sales (Table 2)
+        # Row 5, Col 2: Monthly Franchise Sales (Table 2) - Show dollar amount, franchisees, and territories
         total_territory_sales = sum(monthly_territory_sales)
+        total_franchisees = sum(monthly_num_franchisees)
+        
+        # Primary: Dollar amounts as bars
         fig.add_trace(go.Bar(
             x=months,
             y=monthly_territory_sales,
-            name="Territory Sales",
+            name="Total Sales ($)",
             marker_color="teal",
             text=[f"${v/1000:.0f}K" if v >= 1000 else f"${v:,.0f}" for v in monthly_territory_sales],
             textposition="outside",
             textfont=dict(size=8)
         ), row=5, col=2)
         
-        # Add total annotation to Territory Sales chart
+        # Scale counts to be visible on the same chart (multiply by a factor to position them on the bars)
+        # We'll position them at the top of each bar with text labels
+        max_sales = max(monthly_territory_sales) if monthly_territory_sales else 1
+        scaled_franchisees = [v * (max_sales * 0.15) for v in monthly_num_franchisees]  # Scale to ~15% of max
+        scaled_territories = [v * (max_sales * 0.10) for v in monthly_num_territories]  # Scale to ~10% of max
+        
+        # Add scatter overlay for franchisees count (positioned at top of bars)
+        franchisee_y_positions = [sales + scaled_franchisees[i] for i, sales in enumerate(monthly_territory_sales)]
+        fig.add_trace(go.Scatter(
+            x=months,
+            y=franchisee_y_positions,
+            name="Franchisees",
+            mode="markers+text",
+            marker=dict(size=12, color="orange", symbol="circle", line=dict(width=2, color="darkorange")),
+            text=[f"{int(v)}" for v in monthly_num_franchisees],
+            textposition="top center",
+            textfont=dict(size=9, color="darkorange", family="Arial, sans-serif", weight="bold"),
+            showlegend=True
+        ), row=5, col=2)
+        
+        # Add scatter overlay for territories count (positioned above franchisees)
+        territory_y_positions = [franchisee_y_positions[i] + scaled_territories[i] for i in range(len(months))]
+        fig.add_trace(go.Scatter(
+            x=months,
+            y=territory_y_positions,
+            name="Territories",
+            mode="markers+text",
+            marker=dict(size=12, color="purple", symbol="diamond", line=dict(width=2, color="darkviolet")),
+            text=[f"{v:.1f}" for v in monthly_num_territories],
+            textposition="top center",
+            textfont=dict(size=9, color="darkviolet", family="Arial, sans-serif", weight="bold"),
+            showlegend=True
+        ), row=5, col=2)
+        
+        # Add total annotation with all totals
         fig.add_annotation(
-            text=f"<b>Total Territory Sales:</b><br>${total_territory_sales:,.0f}",
+            text=f"<b>Annual Totals:</b><br>Sales: ${total_territory_sales:,.0f}<br>Franchisees: {int(total_franchisees)}<br>Territories: {total_territories:.1f}",
             xref="x domain",
             yref="y domain",
             x=0.98,
@@ -1023,7 +1074,7 @@ def main():
             tickfont=dict(size=9),
             row=5, col=1
         )
-        # Row 5, Col 2: Monthly Franchise Territory Sales
+        # Row 5, Col 2: Monthly Franchise Sales
         fig.update_xaxes(
             title_text="Month",
             title_font=dict(size=10),
@@ -1032,11 +1083,15 @@ def main():
             row=5, col=2
         )
         fig.update_yaxes(
-            title_text="Territory Sales ($)",
+            title_text="Sales Amount ($)",
             title_font=dict(size=10),
             tickfont=dict(size=9),
             row=5, col=2
         )
+        # Add secondary y-axis for counts (franchisees and territories)
+        # Note: Plotly subplots use yaxis10, yaxis11, etc. for secondary axes
+        # We'll scale the counts to fit on the same axis by using a multiplier
+        # Since sales are in millions and counts are single digits, we'll display counts as text only
         
         # Update remaining bar traces with consistent compact text formatting
         fig.update_traces(
