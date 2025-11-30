@@ -252,6 +252,9 @@ if generate_btn:
     else:
         with st.spinner("Generating executive dashboard... This may take a moment."):
             try:
+                # Use absolute path for output
+                abs_output_path = os.path.join(script_dir, output_path) if not os.path.isabs(output_path) else output_path
+                
                 # Run the dashboard generation script
                 cmd = [
                     sys.executable,
@@ -261,12 +264,9 @@ if generate_btn:
                     "--executive-dashboard",
                     "--top-n-locations", str(top_n),
                     "--tiers", str(tiers),
-                    "--output", output_path,
+                    "--output", abs_output_path,
                     "--title", "2026 Executive Dashboard - Financial Projections"
                 ]
-                # Use absolute path for output
-                abs_output_path = os.path.join(script_dir, output_path) if not os.path.isabs(output_path) else output_path
-                cmd[-2] = abs_output_path  # Update output path in command
                 
                 result = subprocess.run(cmd, capture_output=True, text=True, cwd=script_dir, timeout=120)
                 
