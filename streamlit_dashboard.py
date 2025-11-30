@@ -271,6 +271,12 @@ if not os.path.isabs(abs_output_path) and 'script_dir' in locals():
     abs_output_path = os.path.join(script_dir, output_path)
 
 if os.path.exists(abs_output_path):
+    # Check file modification time to warn if it's old
+    import time
+    file_age = time.time() - os.path.getmtime(abs_output_path)
+    if file_age > 300:  # Older than 5 minutes
+        st.info("ℹ️ **Tip:** This dashboard was generated more than 5 minutes ago. Click 'Generate/Refresh Dashboard' to see the latest changes (2-per-row layout, new tier system).")
+    
     # Read and display the HTML dashboard
     with open(abs_output_path, "r", encoding="utf-8") as f:
         html_content = f.read()
@@ -299,14 +305,16 @@ if os.path.exists(abs_output_path):
                 use_container_width=True
             )
 else:
-    st.info("👆 Please generate the dashboard using the button in the sidebar.")
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.warning("⚠️ **Dashboard not found. Please generate it first!**")
+    st.info("👆 Click 'Generate/Refresh Dashboard' in the sidebar to create the dashboard.")
     st.markdown("""
     ### Instructions:
     1. Upload your Excel workbook or use the default file
     2. Adjust the dashboard options (Top N Locations, Number of Tiers)
-    3. Click "Generate/Refresh Dashboard" to create the dashboard
-    4. The dashboard will display automatically once generated
+    3. Click **"🔄 Generate/Refresh Dashboard"** button in the sidebar
+    4. Wait for the generation to complete (you'll see a success message)
+    5. The dashboard will display automatically with the new 2-per-row layout
+    6. **Note:** You must regenerate after code updates to see changes!
     """)
 
 # Footer with spacing
